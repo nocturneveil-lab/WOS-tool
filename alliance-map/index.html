@@ -609,6 +609,12 @@
   var META_KEY = "castle_redzone_map_meta_v1";
   var ALLIANCE_COLOR_KEY = "castle_redzone_map_alliance_colors_v1";
 
+  function formatFileTimestamp(date){
+    function pad(value){ return String(value).padStart(2, "0"); }
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+      "_" + pad(date.getHours()) + "-" + pad(date.getMinutes());
+  }
+
   function loadAllianceColors(){
     var defaults = { stf: COLORS.stf, ydk: COLORS.ydk, third: COLORS.third };
     try{
@@ -1134,10 +1140,11 @@
   var layoutFileInput = document.getElementById("layoutFileInput");
   var layoutFileStatus = document.getElementById("layoutFileStatus");
   document.getElementById("saveLayoutButton").addEventListener("click", function(){
+    var savedAt = new Date();
     var layout = {
       format: "alliance-map-layout",
       version: 1,
-      savedAt: new Date().toISOString(),
+      savedAt: savedAt.toISOString(),
       classifications: classifications,
       placements: placements,
       objectColors: TYPE_COLORS,
@@ -1147,7 +1154,7 @@
     var url = URL.createObjectURL(blob);
     var link = document.createElement("a");
     link.href = url;
-    link.download = "alliance-map-" + new Date().toISOString().slice(0, 10) + ".json";
+    link.download = "alliance-map-" + formatFileTimestamp(savedAt) + ".json";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1155,89 +1162,91 @@
     layoutFileStatus.textContent = "JSONを保存しました";
   });
   document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
+  function applyLayout(imported){
+    if (!imported || imported.format !== "alliance-map-layout" || imported.version !== 1 ||
+        !imported.classifications || typeof imported.classifications !== "object" || Array.isArray(imported.classifications) ||
+        !Array.isArray(imported.placements) || imported.placements.length > 2000){
+      throw new Error("未対応の保存ファイルです");
+    }
+    var nextClassifications = {};
+    Object.keys(imported.classifications).forEach(function(key){
+      var value = imported.classifications[key];
+      if (!/^-?\d+_-?\d+$/.test(key) || (value !== "none" && !Object.prototype.hasOwnProperty.call(TYPE_COLORS, value))){
+        throw new Error("セルデータが不正です");
+      }
+      nextClassifications[key] = value;
+    });
+    var nextPlacements = imported.placements.map(function(item){
+      if (!item || !Object.prototype.hasOwnProperty.call(PLACEMENT_SIZES, item.type) ||
+          typeof item.anchor !== "string" || !/^-?\d+_-?\d+$/.test(item.anchor)){
+        throw new Error("配置データが不正です");
+      }
+      var placement = {
+        type: item.type,
+        anchor: item.anchor,
+        anchorMode: "bottom-cell",
+        cells: getPlacementCells(item.type, item.anchor)
+      };
+      if (item.type === "city" || item.type === "allianceBuilding"){
+        if (typeof item.name !== "string" || !item.name.trim() || item.name.trim().length > 24){
+          throw new Error("名称が不正です");
+        }
+        placement.name = item.name.trim();
+      }
+      placement.cells.forEach(function(key){ nextClassifications[key] = placement.type; });
+      return placement;
+    });
+    var nextTypeColors = Object.assign({}, TYPE_COLORS);
+    if (imported.objectColors !== undefined){
+      if (!imported.objectColors || typeof imported.objectColors !== "object" || Array.isArray(imported.objectColors)){
+        throw new Error("色設定が不正です");
+      }
+      Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
+        var color = imported.objectColors[type];
+        if (color !== undefined){
+          if (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("色設定が不正です");
+          nextTypeColors[type] = color.toLowerCase();
+        }
+      });
+    }
+    var view = imported.view && typeof imported.view === "object" ? imported.view : {};
+    var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : 2.5;
+    var nextPanX = Number.isFinite(view.panX) ? view.panX : (VIEW_W / 2 - CX * nextZoom);
+    var nextPanY = Number.isFinite(view.panY) ? view.panY : (VIEW_H / 2 - CY * nextZoom);
+    var nextCellSize = Number.isInteger(view.cellSize) && view.cellSize >= 24 && view.cellSize <= 72 ? view.cellSize : targetCellSize;
+    var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 40, 10, 80) : mapCols;
+    var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 30, 10, 80) : mapRows;
+    rememberMapState();
+    classifications = nextClassifications;
+    placements = nextPlacements;
+    TYPE_COLORS = nextTypeColors;
+    panX = nextPanX;
+    panY = nextPanY;
+    zoom = nextZoom;
+    targetCellSize = nextCellSize;
+    mapCols = nextMapCols;
+    mapRows = nextMapRows;
+    if (cellSizeInput) cellSizeInput.value = String(targetCellSize);
+    if (cellSizeOutput) cellSizeOutput.textContent = targetCellSize + " px";
+    mapColsInput.value = String(mapCols);
+    mapRowsInput.value = String(mapRows);
+    zoomValue.textContent = Math.round(zoom * 100) + "%";
+    updateGridMetrics();
+    saveClassifications();
+    savePlacements();
+    saveMapRange();
+    saveTypeColors();
+    refreshObjectColorInputs();
+    updateMapToolColors();
+    try{ localStorage.setItem(CELL_SIZE_KEY, String(targetCellSize)); }
+    catch(e){ console.error("cell size save failed", e); }
+    render();
+  }
   layoutFileInput.addEventListener("change", function(){
     var file = layoutFileInput.files && layoutFileInput.files[0];
     if (!file) return;
     file.text().then(function(text){
-      var imported = JSON.parse(text);
-      if (!imported || imported.format !== "alliance-map-layout" || imported.version !== 1 ||
-          !imported.classifications || typeof imported.classifications !== "object" || Array.isArray(imported.classifications) ||
-          !Array.isArray(imported.placements) || imported.placements.length > 2000){
-        throw new Error("未対応の保存ファイルです");
-      }
-      var nextClassifications = {};
-      Object.keys(imported.classifications).forEach(function(key){
-        var value = imported.classifications[key];
-        if (!/^-?\d+_-?\d+$/.test(key) || (value !== "none" && !Object.prototype.hasOwnProperty.call(TYPE_COLORS, value))){
-          throw new Error("セルデータが不正です");
-        }
-        nextClassifications[key] = value;
-      });
-      var nextPlacements = imported.placements.map(function(item){
-        if (!item || !Object.prototype.hasOwnProperty.call(PLACEMENT_SIZES, item.type) ||
-            typeof item.anchor !== "string" || !/^-?\d+_-?\d+$/.test(item.anchor)){
-          throw new Error("配置データが不正です");
-        }
-        var placement = {
-          type: item.type,
-          anchor: item.anchor,
-          anchorMode: "bottom-cell",
-          cells: getPlacementCells(item.type, item.anchor)
-        };
-        if (item.type === "city" || item.type === "allianceBuilding"){
-          if (typeof item.name !== "string" || !item.name.trim() || item.name.trim().length > 24){
-            throw new Error("名称が不正です");
-          }
-          placement.name = item.name.trim();
-        }
-        placement.cells.forEach(function(key){ nextClassifications[key] = placement.type; });
-        return placement;
-      });
-      var nextTypeColors = Object.assign({}, TYPE_COLORS);
-      if (imported.objectColors !== undefined){
-        if (!imported.objectColors || typeof imported.objectColors !== "object" || Array.isArray(imported.objectColors)){
-          throw new Error("色設定が不正です");
-        }
-        Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
-          var color = imported.objectColors[type];
-          if (color !== undefined){
-            if (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("色設定が不正です");
-            nextTypeColors[type] = color.toLowerCase();
-          }
-        });
-      }
-      var view = imported.view && typeof imported.view === "object" ? imported.view : {};
-      var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : 2.5;
-      var nextPanX = Number.isFinite(view.panX) ? view.panX : (VIEW_W / 2 - CX * nextZoom);
-      var nextPanY = Number.isFinite(view.panY) ? view.panY : (VIEW_H / 2 - CY * nextZoom);
-      var nextCellSize = Number.isInteger(view.cellSize) && view.cellSize >= 24 && view.cellSize <= 72 ? view.cellSize : targetCellSize;
-      var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 40, 10, 80) : mapCols;
-      var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 30, 10, 80) : mapRows;
-      rememberMapState();
-      classifications = nextClassifications;
-      placements = nextPlacements;
-      TYPE_COLORS = nextTypeColors;
-      panX = nextPanX;
-      panY = nextPanY;
-      zoom = nextZoom;
-      targetCellSize = nextCellSize;
-      mapCols = nextMapCols;
-      mapRows = nextMapRows;
-      if (cellSizeInput) cellSizeInput.value = String(targetCellSize);
-      if (cellSizeOutput) cellSizeOutput.textContent = targetCellSize + " px";
-      mapColsInput.value = String(mapCols);
-      mapRowsInput.value = String(mapRows);
-      zoomValue.textContent = Math.round(zoom * 100) + "%";
-      updateGridMetrics();
-      saveClassifications();
-      savePlacements();
-      saveMapRange();
-      saveTypeColors();
-      refreshObjectColorInputs();
-      updateMapToolColors();
-      try{ localStorage.setItem(CELL_SIZE_KEY, String(targetCellSize)); }
-      catch(e){ console.error("cell size save failed", e); }
-      render();
+      applyLayout(JSON.parse(text));
       layoutFileStatus.textContent = "配置を読み込みました";
     }).catch(function(error){
       layoutFileStatus.textContent = "読み込めません: " + error.message;
@@ -2295,7 +2304,7 @@
       var serializer = new XMLSerializer();
       var src = serializer.serializeToString(svg);
       var safeSvgTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
-      downloadSvgString(src, safeSvgTitle + ".svg");
+      downloadSvgString(src, safeSvgTitle + "_" + formatFileTimestamp(new Date()) + ".svg");
     }catch(e){
       console.error("download failed", e);
     }
@@ -2388,7 +2397,7 @@
       var serializer2 = new XMLSerializer();
       var src2 = serializer2.serializeToString(exportSvg);
       var safeTableTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
-      downloadSvgString(src2, safeTableTitle + "_table.svg");
+      downloadSvgString(src2, safeTableTitle + "_table_" + formatFileTimestamp(new Date()) + ".svg");
     }catch(e){
       console.error("table download failed", e);
     }
@@ -2531,7 +2540,7 @@
           flushTablePage();
 
           var safeTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
-          pdf.save(safeTitle + ".pdf");
+          pdf.save(safeTitle + "_" + formatFileTimestamp(new Date()) + ".pdf");
         }catch(err){
           console.error("pdf build failed", err);
           alert("PDFの生成に失敗しました。時間をおいて再度お試しください。");
@@ -2738,6 +2747,28 @@
 
   renderToggles();
   render();
+  (function loadPublishedLayout(){
+    var hasSavedLayout = false;
+    try{
+      hasSavedLayout = localStorage.getItem(CLASSIFICATION_KEY) !== null || localStorage.getItem(PLACEMENT_KEY) !== null;
+    }catch(error){
+      console.error("saved layout check failed", error);
+    }
+    if (hasSavedLayout) return;
+    fetch("./default-layout.json")
+      .then(function(response){
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .then(function(layout){
+        applyLayout(layout);
+        layoutFileStatus.textContent = "公開用の配置を読み込みました";
+      })
+      .catch(function(error){
+        console.error("published layout load failed", error);
+        layoutFileStatus.textContent = "公開用の配置を読み込めません: " + error.message;
+      });
+  })();
 })();
 </script>
 </body>

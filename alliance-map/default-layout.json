@@ -1,0 +1,1549 @@
+{
+  "format": "alliance-map-layout",
+  "version": 1,
+  "savedAt": "2026-10-03T19:41:17.344Z",
+  "classifications": {
+    "0_0": "city",
+    "-6_-6": "headquarters",
+    "-6_-5": "headquarters",
+    "-5_-6": "headquarters",
+    "-5_-5": "headquarters",
+    "-5_3": "bearTrap",
+    "-5_4": "bearTrap",
+    "-5_5": "bearTrap",
+    "-4_3": "bearTrap",
+    "-4_4": "bearTrap",
+    "-4_5": "bearTrap",
+    "-3_3": "bearTrap",
+    "-3_4": "bearTrap",
+    "-3_5": "bearTrap",
+    "-4_-6": "headquarters",
+    "-4_-5": "headquarters",
+    "-6_2": "flag",
+    "-2_2": "flag",
+    "-2_6": "flag",
+    "-6_6": "flag",
+    "-7_4": "flag",
+    "-4_1": "flag",
+    "-4_7": "flag",
+    "-1_4": "flag",
+    "-2_0": "city",
+    "-2_1": "city",
+    "-1_2": "city",
+    "-1_3": "city",
+    "0_2": "city",
+    "0_3": "city",
+    "-3_0": "city",
+    "-3_1": "city",
+    "-1_0": "city",
+    "-1_1": "city",
+    "0_1": "city",
+    "-1_5": "city",
+    "-1_6": "city",
+    "0_5": "city",
+    "0_6": "city",
+    "1_9": "city",
+    "1_10": "city",
+    "2_9": "city",
+    "2_10": "city",
+    "1_5": "city",
+    "1_6": "city",
+    "2_5": "city",
+    "2_6": "city",
+    "3_5": "city",
+    "3_6": "city",
+    "4_5": "city",
+    "4_6": "city",
+    "5_7": "city",
+    "5_8": "city",
+    "6_7": "city",
+    "6_8": "city",
+    "5_5": "flag",
+    "1_2": "city",
+    "1_3": "city",
+    "2_2": "city",
+    "2_3": "city",
+    "-2_-2": "city",
+    "-2_-1": "city",
+    "-3_-2": "city",
+    "-3_-1": "city",
+    "-1_-2": "city",
+    "-1_-1": "city",
+    "0_-2": "city",
+    "0_-1": "city",
+    "1_0": "city",
+    "1_1": "city",
+    "2_0": "city",
+    "2_1": "city",
+    "1_-2": "city",
+    "1_-1": "city",
+    "2_-2": "city",
+    "2_-1": "city",
+    "1_-4": "city",
+    "1_-3": "city",
+    "2_-4": "city",
+    "2_-3": "city",
+    "-1_-4": "city",
+    "-1_-3": "city",
+    "0_-4": "city",
+    "0_-3": "city",
+    "-3_-4": "city",
+    "-3_-3": "city",
+    "-2_-4": "city",
+    "-2_-3": "city",
+    "-3_-6": "city",
+    "-3_-5": "city",
+    "-2_-6": "city",
+    "-2_-5": "city",
+    "-6_-7": "headquarters",
+    "-5_-7": "headquarters",
+    "-4_-7": "headquarters",
+    "-6_-4": "city",
+    "-6_-3": "city",
+    "-5_-4": "city",
+    "-5_-3": "city",
+    "-6_-2": "city",
+    "-6_-1": "city",
+    "-5_-2": "city",
+    "-5_-1": "city",
+    "-6_0": "city",
+    "-6_1": "city",
+    "-5_0": "city",
+    "-5_1": "city",
+    "-8_0": "city",
+    "-8_1": "city",
+    "-7_0": "city",
+    "-7_1": "city",
+    "-8_-2": "city",
+    "-8_-1": "city",
+    "-7_-2": "city",
+    "-7_-1": "city",
+    "-8_-4": "city",
+    "-8_-3": "city",
+    "-7_-4": "city",
+    "-7_-3": "city",
+    "-9_-6": "city",
+    "-9_-5": "city",
+    "-8_-6": "city",
+    "-8_-5": "city",
+    "-10_-1": "city",
+    "-10_0": "city",
+    "-9_-1": "city",
+    "-9_0": "city",
+    "-8_2": "city",
+    "-8_3": "city",
+    "-7_2": "city",
+    "-7_3": "city",
+    "-10_2": "city",
+    "-10_3": "city",
+    "-9_2": "city",
+    "-9_3": "city",
+    "-8_5": "city",
+    "-8_6": "city",
+    "-7_5": "city",
+    "-7_6": "city",
+    "-10_5": "city",
+    "-10_6": "city",
+    "-9_5": "city",
+    "-9_6": "city",
+    "-12_5": "city",
+    "-12_6": "city",
+    "-11_5": "city",
+    "-11_6": "city",
+    "-6_7": "city",
+    "-6_8": "city",
+    "-5_7": "city",
+    "-5_8": "city",
+    "-6_9": "city",
+    "-6_10": "city",
+    "-5_9": "city",
+    "-5_10": "city",
+    "-8_7": "city",
+    "-8_8": "city",
+    "-7_7": "city",
+    "-7_8": "city",
+    "-8_9": "city",
+    "-8_10": "city",
+    "-7_9": "city",
+    "-7_10": "city",
+    "-10_7": "city",
+    "-10_8": "city",
+    "-9_7": "city",
+    "-9_8": "city",
+    "-10_9": "city",
+    "-10_10": "city",
+    "-9_9": "city",
+    "-9_10": "city",
+    "-13_8": "flag",
+    "-9_13": "flag",
+    "-3_9": "city",
+    "-3_10": "city",
+    "-1_9": "city",
+    "-1_10": "city",
+    "0_9": "city",
+    "0_10": "city",
+    "-4_9": "city",
+    "-4_10": "city",
+    "-2_11": "city",
+    "-2_12": "city",
+    "-1_11": "city",
+    "-1_12": "city",
+    "3_9": "city",
+    "3_10": "city",
+    "4_9": "city",
+    "4_10": "city",
+    "3_7": "city",
+    "3_8": "city",
+    "4_7": "city",
+    "4_8": "city",
+    "1_7": "city",
+    "1_8": "city",
+    "2_7": "city",
+    "2_8": "city",
+    "-1_7": "city",
+    "-1_8": "city",
+    "0_7": "city",
+    "0_8": "city",
+    "-3_7": "city",
+    "-3_8": "city",
+    "-2_7": "city",
+    "-2_8": "city",
+    "9_9": "largeGatheringSite",
+    "9_10": "largeGatheringSite",
+    "9_11": "largeGatheringSite",
+    "10_9": "largeGatheringSite",
+    "10_10": "largeGatheringSite",
+    "10_11": "largeGatheringSite",
+    "11_9": "largeGatheringSite",
+    "11_10": "largeGatheringSite",
+    "11_11": "largeGatheringSite",
+    "3_0": "city",
+    "3_1": "city",
+    "4_0": "city",
+    "4_1": "city",
+    "3_-2": "city",
+    "3_-1": "city",
+    "4_-2": "city",
+    "4_-1": "city",
+    "6_-6": "bearTrap",
+    "3_-3": "flag",
+    "2_-5": "flag",
+    "3_-7": "flag",
+    "4_-6": "bearTrap",
+    "4_-5": "bearTrap",
+    "4_-4": "bearTrap",
+    "5_-6": "bearTrap",
+    "5_-5": "bearTrap",
+    "5_-4": "bearTrap",
+    "6_-5": "bearTrap",
+    "6_-4": "bearTrap",
+    "5_-2": "flag",
+    "7_-3": "flag",
+    "8_-5": "flag",
+    "7_-7": "flag",
+    "5_-8": "flag",
+    "5_0": "city",
+    "5_1": "city",
+    "6_0": "city",
+    "6_1": "city",
+    "7_0": "city",
+    "7_1": "city",
+    "8_0": "city",
+    "8_1": "city",
+    "6_-2": "city",
+    "6_-1": "city",
+    "7_-2": "city",
+    "7_-1": "city",
+    "8_-2": "city",
+    "8_-1": "city",
+    "9_-2": "city",
+    "9_-1": "city",
+    "10_0": "city",
+    "10_1": "city",
+    "11_0": "city",
+    "11_1": "city",
+    "10_-2": "city",
+    "10_-1": "city",
+    "11_-2": "city",
+    "11_-1": "city",
+    "9_-4": "city",
+    "9_-3": "city",
+    "10_-4": "city",
+    "10_-3": "city",
+    "8_-7": "city",
+    "8_-6": "city",
+    "9_-7": "city",
+    "9_-6": "city",
+    "6_-9": "city",
+    "6_-8": "city",
+    "7_-9": "city",
+    "7_-8": "city",
+    "8_-9": "city",
+    "8_-8": "city",
+    "9_-9": "city",
+    "9_-8": "city",
+    "8_-11": "city",
+    "8_-10": "city",
+    "9_-11": "city",
+    "9_-10": "city",
+    "10_-9": "city",
+    "10_-8": "city",
+    "11_-9": "city",
+    "11_-8": "city",
+    "10_-11": "city",
+    "10_-10": "city",
+    "11_-11": "city",
+    "11_-10": "city",
+    "8_-13": "city",
+    "8_-12": "city",
+    "9_-13": "city",
+    "9_-12": "city",
+    "6_-13": "city",
+    "6_-12": "city",
+    "7_-13": "city",
+    "7_-12": "city",
+    "6_-11": "city",
+    "6_-10": "city",
+    "7_-11": "city",
+    "7_-10": "city",
+    "6_-15": "flag",
+    "3_-9": "city",
+    "3_-8": "city",
+    "4_-9": "city",
+    "4_-8": "city",
+    "3_-11": "city",
+    "3_-10": "city",
+    "4_-11": "city",
+    "4_-10": "city",
+    "1_-13": "city",
+    "1_-12": "city",
+    "2_-13": "city",
+    "2_-12": "city",
+    "1_-11": "city",
+    "1_-10": "city",
+    "2_-11": "city",
+    "2_-10": "city",
+    "1_-9": "city",
+    "1_-8": "city",
+    "2_-9": "city",
+    "2_-8": "city",
+    "1_-7": "city",
+    "1_-6": "city",
+    "2_-7": "city",
+    "2_-6": "city",
+    "-1_-9": "city",
+    "-1_-8": "city",
+    "0_-9": "city",
+    "0_-8": "city",
+    "-1_-7": "city",
+    "-1_-6": "city",
+    "0_-7": "city",
+    "0_-6": "city",
+    "-3_-11": "city",
+    "-3_-10": "city",
+    "-2_-11": "city",
+    "-2_-10": "city",
+    "-4_-13": "city",
+    "-4_-12": "city",
+    "-3_-13": "city",
+    "-3_-12": "city",
+    "-2_-14": "flag",
+    "-8_-15": "headquarters",
+    "-8_-14": "headquarters",
+    "-8_-13": "headquarters",
+    "-7_-15": "headquarters",
+    "-7_-14": "headquarters",
+    "-7_-13": "headquarters",
+    "-6_-15": "headquarters",
+    "-6_-14": "headquarters",
+    "-6_-13": "headquarters",
+    "-13_-15": "bearTrap",
+    "-13_-14": "bearTrap",
+    "-13_-13": "bearTrap",
+    "-12_-15": "bearTrap",
+    "-12_-14": "bearTrap",
+    "-12_-13": "bearTrap",
+    "-11_-15": "bearTrap",
+    "-11_-14": "bearTrap",
+    "-11_-13": "bearTrap",
+    "3_2": "city",
+    "3_3": "city",
+    "4_2": "city",
+    "4_3": "city",
+    "6_3": "city",
+    "6_4": "city",
+    "7_3": "city",
+    "7_4": "city"
+  },
+  "placements": [
+    {
+      "type": "bearTrap",
+      "anchor": "-3_5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-5_3",
+        "-5_4",
+        "-5_5",
+        "-4_3",
+        "-4_4",
+        "-4_5",
+        "-3_3",
+        "-3_4",
+        "-3_5"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-6_2",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_2"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-2_2",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-2_2"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-2_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-2_6"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-6_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_6"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-7_4",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-7_4"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-4_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-4_1"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-4_7",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-4_7"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-1_4",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_4"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "0_3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_2",
+        "-1_3",
+        "0_2",
+        "0_3"
+      ],
+      "name": "るび"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_0",
+        "-3_1",
+        "-2_0",
+        "-2_1"
+      ],
+      "name": "ジャンク"
+    },
+    {
+      "type": "city",
+      "anchor": "0_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_0",
+        "-1_1",
+        "0_0",
+        "0_1"
+      ],
+      "name": "征服者"
+    },
+    {
+      "type": "city",
+      "anchor": "0_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_5",
+        "-1_6",
+        "0_5",
+        "0_6"
+      ],
+      "name": "ひらやん"
+    },
+    {
+      "type": "city",
+      "anchor": "2_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_9",
+        "1_10",
+        "2_9",
+        "2_10"
+      ],
+      "name": "バンビ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_5",
+        "1_6",
+        "2_5",
+        "2_6"
+      ],
+      "name": "消臭力～"
+    },
+    {
+      "type": "city",
+      "anchor": "4_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_5",
+        "3_6",
+        "4_5",
+        "4_6"
+      ],
+      "name": "さーもん"
+    },
+    {
+      "type": "city",
+      "anchor": "6_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "5_7",
+        "5_8",
+        "6_7",
+        "6_8"
+      ],
+      "name": "モズ"
+    },
+    {
+      "type": "flag",
+      "anchor": "5_5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "5_5"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "2_3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_2",
+        "1_3",
+        "2_2",
+        "2_3"
+      ],
+      "name": "ハル"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_-2",
+        "-3_-1",
+        "-2_-2",
+        "-2_-1"
+      ],
+      "name": "マスター像"
+    },
+    {
+      "type": "city",
+      "anchor": "0_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_-2",
+        "-1_-1",
+        "0_-2",
+        "0_-1"
+      ],
+      "name": "エレナ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_0",
+        "1_1",
+        "2_0",
+        "2_1"
+      ],
+      "name": "Billy"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-2",
+        "1_-1",
+        "2_-2",
+        "2_-1"
+      ],
+      "name": "ﾈﾋﾟﾈﾋﾟ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-4",
+        "1_-3",
+        "2_-4",
+        "2_-3"
+      ],
+      "name": "みすてぃ"
+    },
+    {
+      "type": "city",
+      "anchor": "0_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_-4",
+        "-1_-3",
+        "0_-4",
+        "0_-3"
+      ],
+      "name": "ショーン"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_-4",
+        "-3_-3",
+        "-2_-4",
+        "-2_-3"
+      ],
+      "name": "オムライス"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_-5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_-6",
+        "-3_-5",
+        "-2_-6",
+        "-2_-5"
+      ],
+      "name": "ポン吉"
+    },
+    {
+      "type": "headquarters",
+      "anchor": "-4_-5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_-7",
+        "-6_-6",
+        "-6_-5",
+        "-5_-7",
+        "-5_-6",
+        "-5_-5",
+        "-4_-7",
+        "-4_-6",
+        "-4_-5"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "-5_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_-4",
+        "-6_-3",
+        "-5_-4",
+        "-5_-3"
+      ],
+      "name": "じぇい"
+    },
+    {
+      "type": "city",
+      "anchor": "-5_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_-2",
+        "-6_-1",
+        "-5_-2",
+        "-5_-1"
+      ],
+      "name": "にしにじ"
+    },
+    {
+      "type": "city",
+      "anchor": "-5_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_0",
+        "-6_1",
+        "-5_0",
+        "-5_1"
+      ],
+      "name": "マンモス肉"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_0",
+        "-8_1",
+        "-7_0",
+        "-7_1"
+      ],
+      "name": "カーラーン"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_-2",
+        "-8_-1",
+        "-7_-2",
+        "-7_-1"
+      ],
+      "name": "コジー"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_-4",
+        "-8_-3",
+        "-7_-4",
+        "-7_-3"
+      ],
+      "name": "yy"
+    },
+    {
+      "type": "city",
+      "anchor": "-8_-5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-9_-6",
+        "-9_-5",
+        "-8_-6",
+        "-8_-5"
+      ],
+      "name": "ケリー"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_0",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-10_-1",
+        "-10_0",
+        "-9_-1",
+        "-9_0"
+      ],
+      "name": "coco"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_2",
+        "-8_3",
+        "-7_2",
+        "-7_3"
+      ],
+      "name": "ひなひな"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-10_2",
+        "-10_3",
+        "-9_2",
+        "-9_3"
+      ],
+      "name": "めかぶ"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_5",
+        "-8_6",
+        "-7_5",
+        "-7_6"
+      ],
+      "name": "Mr.ポポ"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-10_5",
+        "-10_6",
+        "-9_5",
+        "-9_6"
+      ],
+      "name": "しーちゃん"
+    },
+    {
+      "type": "city",
+      "anchor": "-11_6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-12_5",
+        "-12_6",
+        "-11_5",
+        "-11_6"
+      ],
+      "name": "じーちゃん"
+    },
+    {
+      "type": "city",
+      "anchor": "-5_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_7",
+        "-6_8",
+        "-5_7",
+        "-5_8"
+      ],
+      "name": "とんかつ"
+    },
+    {
+      "type": "city",
+      "anchor": "-5_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-6_9",
+        "-6_10",
+        "-5_9",
+        "-5_10"
+      ],
+      "name": "ディア"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_7",
+        "-8_8",
+        "-7_7",
+        "-7_8"
+      ],
+      "name": "アロハなクリームパン"
+    },
+    {
+      "type": "city",
+      "anchor": "-7_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_9",
+        "-8_10",
+        "-7_9",
+        "-7_10"
+      ],
+      "name": "どめ虫"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-10_7",
+        "-10_8",
+        "-9_7",
+        "-9_8"
+      ],
+      "name": "プリンセスこまち"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-10_9",
+        "-10_10",
+        "-9_9",
+        "-9_10"
+      ],
+      "name": "クロワッチャン"
+    },
+    {
+      "type": "flag",
+      "anchor": "-13_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-13_8"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "-9_13",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-9_13"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "0_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_9",
+        "-1_10",
+        "0_9",
+        "0_10"
+      ],
+      "name": "チップ"
+    },
+    {
+      "type": "city",
+      "anchor": "-3_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-4_9",
+        "-4_10",
+        "-3_9",
+        "-3_10"
+      ],
+      "name": "デール"
+    },
+    {
+      "type": "city",
+      "anchor": "-1_12",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-2_11",
+        "-2_12",
+        "-1_11",
+        "-1_12"
+      ],
+      "name": "桃太郎侍"
+    },
+    {
+      "type": "city",
+      "anchor": "4_10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_9",
+        "3_10",
+        "4_9",
+        "4_10"
+      ],
+      "name": "軍事の大物"
+    },
+    {
+      "type": "city",
+      "anchor": "4_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_7",
+        "3_8",
+        "4_7",
+        "4_8"
+      ],
+      "name": "tsukihoto"
+    },
+    {
+      "type": "city",
+      "anchor": "2_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_7",
+        "1_8",
+        "2_7",
+        "2_8"
+      ],
+      "name": "ヨヨヨ"
+    },
+    {
+      "type": "city",
+      "anchor": "0_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_7",
+        "-1_8",
+        "0_7",
+        "0_8"
+      ],
+      "name": "Light"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_7",
+        "-3_8",
+        "-2_7",
+        "-2_8"
+      ],
+      "name": "matm"
+    },
+    {
+      "type": "largeGatheringSite",
+      "anchor": "11_11",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "9_9",
+        "9_10",
+        "9_11",
+        "10_9",
+        "10_10",
+        "10_11",
+        "11_9",
+        "11_10",
+        "11_11"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "4_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_0",
+        "3_1",
+        "4_0",
+        "4_1"
+      ],
+      "name": "kurt"
+    },
+    {
+      "type": "city",
+      "anchor": "4_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_-2",
+        "3_-1",
+        "4_-2",
+        "4_-1"
+      ],
+      "name": "hinahina"
+    },
+    {
+      "type": "flag",
+      "anchor": "3_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_-3"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "2_-5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "2_-5"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "3_-7",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_-7"
+      ]
+    },
+    {
+      "type": "bearTrap",
+      "anchor": "6_-4",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "4_-6",
+        "4_-5",
+        "4_-4",
+        "5_-6",
+        "5_-5",
+        "5_-4",
+        "6_-6",
+        "6_-5",
+        "6_-4"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "5_-2",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "5_-2"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "7_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "7_-3"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "8_-5",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-5"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "7_-7",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "7_-7"
+      ]
+    },
+    {
+      "type": "flag",
+      "anchor": "5_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "5_-8"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "6_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "5_0",
+        "5_1",
+        "6_0",
+        "6_1"
+      ],
+      "name": "寒ブリ/Cool"
+    },
+    {
+      "type": "city",
+      "anchor": "8_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "7_0",
+        "7_1",
+        "8_0",
+        "8_1"
+      ],
+      "name": "キャラバン"
+    },
+    {
+      "type": "city",
+      "anchor": "7_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_-2",
+        "6_-1",
+        "7_-2",
+        "7_-1"
+      ],
+      "name": "み゜ん゜か゜"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-2",
+        "8_-1",
+        "9_-2",
+        "9_-1"
+      ],
+      "name": "ポテコ"
+    },
+    {
+      "type": "city",
+      "anchor": "11_1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_0",
+        "10_1",
+        "11_0",
+        "11_1"
+      ],
+      "name": "ざっくでらろちゃ"
+    },
+    {
+      "type": "city",
+      "anchor": "11_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_-2",
+        "10_-1",
+        "11_-2",
+        "11_-1"
+      ],
+      "name": "えむみ"
+    },
+    {
+      "type": "city",
+      "anchor": "10_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "9_-4",
+        "9_-3",
+        "10_-4",
+        "10_-3"
+      ],
+      "name": "ちょっと太った辰"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-7",
+        "8_-6",
+        "9_-7",
+        "9_-6"
+      ],
+      "name": "ハリソン山中"
+    },
+    {
+      "type": "city",
+      "anchor": "7_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_-9",
+        "6_-8",
+        "7_-9",
+        "7_-8"
+      ],
+      "name": "ぴんきぃ"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-9",
+        "8_-8",
+        "9_-9",
+        "9_-8"
+      ],
+      "name": "しょーやん"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-11",
+        "8_-10",
+        "9_-11",
+        "9_-10"
+      ],
+      "name": "佐々木"
+    },
+    {
+      "type": "city",
+      "anchor": "11_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_-9",
+        "10_-8",
+        "11_-9",
+        "11_-8"
+      ],
+      "name": "稲葉麗子"
+    },
+    {
+      "type": "city",
+      "anchor": "11_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_-11",
+        "10_-10",
+        "11_-11",
+        "11_-10"
+      ],
+      "name": "オロチ"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-12",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-13",
+        "8_-12",
+        "9_-13",
+        "9_-12"
+      ],
+      "name": "後藤"
+    },
+    {
+      "type": "city",
+      "anchor": "7_-12",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_-13",
+        "6_-12",
+        "7_-13",
+        "7_-12"
+      ],
+      "name": "辻本"
+    },
+    {
+      "type": "city",
+      "anchor": "7_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_-11",
+        "6_-10",
+        "7_-11",
+        "7_-10"
+      ],
+      "name": "H Luna"
+    },
+    {
+      "type": "flag",
+      "anchor": "6_-15",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_-15"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "4_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_-9",
+        "3_-8",
+        "4_-9",
+        "4_-8"
+      ],
+      "name": "コザクラさん"
+    },
+    {
+      "type": "city",
+      "anchor": "4_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_-11",
+        "3_-10",
+        "4_-11",
+        "4_-10"
+      ],
+      "name": "SACタチコマ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-12",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-13",
+        "1_-12",
+        "2_-13",
+        "2_-12"
+      ],
+      "name": "はにちゅろ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-11",
+        "1_-10",
+        "2_-11",
+        "2_-10"
+      ],
+      "name": "はずき"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-9",
+        "1_-8",
+        "2_-9",
+        "2_-8"
+      ],
+      "name": "つかこ"
+    },
+    {
+      "type": "city",
+      "anchor": "2_-6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "1_-7",
+        "1_-6",
+        "2_-7",
+        "2_-6"
+      ],
+      "name": "バンコちゃん"
+    },
+    {
+      "type": "city",
+      "anchor": "0_-8",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_-9",
+        "-1_-8",
+        "0_-9",
+        "0_-8"
+      ],
+      "name": "SACトグサ"
+    },
+    {
+      "type": "city",
+      "anchor": "0_-6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-1_-7",
+        "-1_-6",
+        "0_-7",
+        "0_-6"
+      ],
+      "name": "精鋭先陣"
+    },
+    {
+      "type": "city",
+      "anchor": "-2_-10",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-3_-11",
+        "-3_-10",
+        "-2_-11",
+        "-2_-10"
+      ],
+      "name": "2"
+    },
+    {
+      "type": "city",
+      "anchor": "-3_-12",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-4_-13",
+        "-4_-12",
+        "-3_-13",
+        "-3_-12"
+      ],
+      "name": "同盟牧場"
+    },
+    {
+      "type": "flag",
+      "anchor": "-2_-14",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-2_-14"
+      ]
+    },
+    {
+      "type": "headquarters",
+      "anchor": "-6_-13",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-8_-15",
+        "-8_-14",
+        "-8_-13",
+        "-7_-15",
+        "-7_-14",
+        "-7_-13",
+        "-6_-15",
+        "-6_-14",
+        "-6_-13"
+      ]
+    },
+    {
+      "type": "bearTrap",
+      "anchor": "-11_-13",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "-13_-15",
+        "-13_-14",
+        "-13_-13",
+        "-12_-15",
+        "-12_-14",
+        "-12_-13",
+        "-11_-15",
+        "-11_-14",
+        "-11_-13"
+      ]
+    },
+    {
+      "type": "city",
+      "anchor": "4_3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "3_2",
+        "3_3",
+        "4_2",
+        "4_3"
+      ],
+      "name": "ぺんたん"
+    },
+    {
+      "type": "city",
+      "anchor": "7_4",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "6_3",
+        "6_4",
+        "7_3",
+        "7_4"
+      ],
+      "name": "同盟鉄鉱場"
+    }
+  ],
+  "objectColors": {
+    "headquarters": "#ed817a",
+    "flag": "#f4d57b",
+    "city": "#82b8e8",
+    "bearTrap": "#8fcda0",
+    "allianceBuilding": "#7d96ff",
+    "largeGatheringSite": "#d5a783",
+    "unavailable": "#b8b8b8"
+  },
+  "view": {
+    "panX": -1018.7966555757416,
+    "panY": -498.9580187343646,
+    "zoom": 2.046826890502978,
+    "cellSize": 36,
+    "mapCols": 40,
+    "mapRows": 30
+  }
+}
