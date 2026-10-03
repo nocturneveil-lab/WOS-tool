@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Castle War Deployment Map</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel-bg:#fafafa;
+    --panel-border:#e0e0e0;
+    --text:#222222;
+    --text-sub:#666666;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1a1a1a;
+      --panel-bg:#242424;
+      --panel-border:#3a3a3a;
+      --text:#eaeaea;
+      --text-sub:#aaaaaa;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1a1a1a;
+    --panel-bg:#242424;
+    --panel-border:#3a3a3a;
+    --text:#eaeaea;
+    --text-sub:#aaaaaa;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,-apple-system,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    justify-content:center;
+    padding:0;
+  }
+  h1{
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 14px;
+    color:var(--text);
+  }
+  .map-wrap{
+    width:100vw;
+    height:calc(100vh - 64px);
+    flex:0 0 auto;
+    max-width:none;
+    background:var(--bg);
+    border:0;
+    border-radius:0;
+    overflow:hidden;
+    cursor:default;
+    touch-action:none;
+    user-select:none;
+  }
+  .map-wrap.pan-ready{cursor:grab;}
+  .map-wrap.dragging{cursor:grabbing;}
+  .map-wrap:not(.edit-mode) .object-layer{cursor:grab;}
+  .map-wrap.edit-mode .object-layer{cursor:pointer;}
+  .object-layer.dragging{cursor:grabbing;}
+  svg{
+    display:block;
+    width:100%;
+    height:100%;
+  }
+  body > h1,
+  body > .toolbar,
+  body > .table-wrap{display:none;}
+  .map-controls{
+    width:100%;
+    height:64px;
+    flex:0 0 64px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:24px;
+    padding:8px 16px;
+    background:var(--panel-bg);
+    border-bottom:1px solid var(--panel-border);
+    overflow-x:auto;
+    z-index:2;
+  }
+  .size-control,
+  .map-tools,
+  .map-tool{display:flex;align-items:center;}
+  .size-control{gap:9px;white-space:nowrap;font-size:13px;}
+  .label-size-control{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:13px;}
+  #labelSizeInput{width:120px;accent-color:#2d7ff9;}
+  #labelSizeOutput{min-width:4em;color:var(--text-sub);font-size:12px;text-align:right;}
+  .zoom-readout{padding-left:12px;border-left:1px solid var(--panel-border);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .map-tools{gap:6px;}
+  .map-actions{display:flex;gap:6px;flex:0 0 auto;}
+  .map-actions button{padding:7px 10px;white-space:nowrap;}
+  .map-actions button:disabled{opacity:0.45;cursor:default;}
+  .edit-mode-toggle{padding:7px 12px;border-color:var(--panel-border);background:var(--panel-bg);font-weight:600;}
+  .edit-mode-toggle.active{background:#1f6fd6;color:#ffffff;border-color:#1f6fd6;}
+  .edit-mode-toggle.view-mode{background:#dc3545;color:#ffffff;border-color:#dc3545;}
+  #layoutFileInput{display:none;}
+  .layout-file-status{align-self:center;color:var(--text-sub);font-size:11px;white-space:nowrap;}
+  .map-tool{
+    gap:7px;
+    padding:7px 11px;
+    border-color:var(--panel-border);
+    white-space:nowrap;
+  }
+  .map-tool::before{
+    content:"";
+    width:12px;
+    height:12px;
+    flex:0 0 auto;
+    border-radius:50%;
+    background:var(--tool-color);
+  }
+  .map-tool[data-type="headquarters"]{--tool-color:#ed817a;}
+  .map-tool[data-type="flag"]{--tool-color:#f4d57b;}
+  .map-tool[data-type="city"]{--tool-color:#82b8e8;}
+  .map-tool[data-type="bearTrap"]{--tool-color:#8fcda0;}
+  .map-tool[data-type="allianceBuilding"]{--tool-color:#7d96ff;}
+  .map-tool[data-type="erase"]{--tool-color:transparent;}
+  .map-tool[data-type="erase"]::before{display:none;}
+  .map-tool[data-type="largeGatheringSite"]{--tool-color:#d5a783;}
+  .map-tool[data-type="unavailable"]{--tool-color:#b8b8b8;}
+  .map-tool.active{border-color:var(--text);box-shadow:0 0 0 1px var(--text);}
+  .city-dialog[hidden]{display:none;}
+  .city-dialog{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    display:grid;
+    place-items:center;
+    padding:20px;
+    background:rgba(0,0,0,0.34);
+  }
+  .city-dialog form{
+    width:min(360px,100%);
+    padding:18px;
+    background:var(--panel-bg);
+    color:var(--text);
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.22);
+  }
+  .city-dialog label{display:flex;flex-direction:column;gap:8px;font-size:14px;}
+  .city-dialog input{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--panel-border);
+    border-radius:4px;
+    background:var(--bg);
+    color:var(--text);
+    font:inherit;
+  }
+  .city-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+  .settings-form{width:min(420px,100%);max-height:calc(100vh - 40px);overflow-y:auto;}
+  .settings-form h2{margin:0 0 14px;font-size:16px;font-weight:600;}
+  .settings-color-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px;}
+  .settings-color-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:5px 0;border-bottom:1px solid var(--panel-border);}
+  .settings-color-row input[type="color"]{width:42px;height:32px;flex:0 0 42px;padding:2px;}
+  .settings-color-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;}
+  .settings-color-actions > span{flex:1 1 auto;}
+  @media (max-width:600px){
+    .map-controls{justify-content:flex-start;gap:12px;padding:8px;}
+    .size-control{gap:6px;}
+    #cellSizeInput{width:90px;}
+    .map-tools{gap:4px;}
+    .map-tool{padding:7px 8px;}
+  }
+  @media (max-width:420px){.settings-color-list{grid-template-columns:1fr;}}
+  .cell{
+    cursor:pointer;
+    transition:opacity .1s, stroke .1s, filter .1s;
+  }
+  .cell:hover{
+    opacity:0.9;
+  }
+  .cell.locked{
+    cursor:default;
+  }
+  .cell.locked:hover{
+    opacity:1;
+    stroke:#aaaaaa;
+    stroke-width:1;
+    filter:none;
+  }
+  .toolbar{
+    width:100%;
+    max-width:880px;
+    margin-top:16px;
+    background:var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    padding:14px 16px;
+  }
+  .toolbar-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  .swatch{
+    width:30px;height:30px;
+    border-radius:6px;
+    border:2px solid transparent;
+    cursor:pointer;
+    flex:0 0 auto;
+    position:relative;
+  }
+  .swatch.selected{
+    border-color:var(--text);
+    box-shadow:0 0 0 2px var(--bg);
+  }
+  .swatch-label{
+    font-size:11px;
+    color:var(--text-sub);
+    margin-top:4px;
+    text-align:center;
+  }
+  .swatch-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+  }
+  .btns{
+    margin-left:auto;
+    display:flex;
+    gap:8px;
+  }
+  button{
+    font-family:inherit;
+    font-size:13px;
+    padding:7px 14px;
+    border-radius:6px;
+    border:1px solid var(--panel-border);
+    background:var(--bg);
+    color:var(--text);
+    cursor:pointer;
+  }
+  button:hover{
+    background:var(--panel-border);
+  }
+  .hint{
+    font-size:12px;
+    color:var(--text-sub);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  .toggle-group{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .toggle-group-label{
+    font-size:12px;
+    color:var(--text-sub);
+    font-weight:600;
+  }
+  .toggle-switch{
+    display:flex;
+    gap:10px;
+  }
+  .toggle-switch button{
+    border:1.5px solid var(--panel-border);
+    border-radius:10px;
+    padding:11px 26px;
+    font-size:15px;
+    font-weight:700;
+    background:var(--panel-bg);
+    color:var(--text);
+    box-shadow:0 2px 0 rgba(0,0,0,0.08);
+    transition:background .12s, border-color .12s, box-shadow .12s, transform .05s;
+  }
+  .toggle-switch button:hover:not(.active){
+    background:var(--panel-border);
+  }
+  .toggle-switch button:active{
+    transform:translateY(1px);
+    box-shadow:0 1px 0 rgba(0,0,0,0.08);
+  }
+  .toggle-switch button.active{
+    background:#2f6fc7;
+    border-color:#2158a8;
+    color:#ffffff;
+    box-shadow:0 2px 0 #1d4a90, 0 3px 10px rgba(47,111,199,0.45);
+  }
+  .toggle-switch.toggle-switch-sm{
+    gap:6px;
+  }
+  .toggle-switch.toggle-switch-sm button{
+    padding:5px 12px;
+    font-size:12px;
+    border-radius:7px;
+    box-shadow:0 1px 0 rgba(0,0,0,0.08);
+  }
+  #hoverColorToggle button{
+    border-width:2px;
+    font-weight:700;
+  }
+  #hoverColorToggle button.active{
+    outline:3px solid #222222;
+    outline-offset:-4px;
+  }
+  .table-wrap{
+    width:100%;
+    max-width:880px;
+    margin-top:16px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .table-card{
+    flex:1 1 260px;
+    background:var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    padding:14px 16px;
+  }
+  .table-card h2{
+    font-size:14px;
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .table-card h2 .dot{
+    width:12px;height:12px;border-radius:3px;display:inline-block;
+  }
+  table.placement-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.placement-table th, table.placement-table td{
+    text-align:left;
+    padding:5px 6px;
+    border-bottom:1px solid var(--panel-border);
+  }
+  table.placement-table th{
+    color:var(--text-sub);
+    font-weight:600;
+  }
+  .empty-note{
+    font-size:12px;
+    color:var(--text-sub);
+  }
+  .cell-number{
+    pointer-events:none;
+    font-family:inherit;
+    paint-order:stroke;
+    stroke:#ffffff;
+    stroke-width:2.5px;
+    stroke-linejoin:round;
+  }
+  .color-swatch-input{
+    -webkit-appearance:none;
+    appearance:none;
+    width:30px;
+    height:30px;
+    border-radius:6px;
+    border:2px solid transparent;
+    padding:0;
+    cursor:pointer;
+    background:none;
+  }
+  .color-swatch-input::-webkit-color-swatch-wrapper{
+    padding:0;
+    border-radius:6px;
+  }
+  .color-swatch-input::-webkit-color-swatch{
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+  }
+  .color-swatch-input::-moz-color-swatch{
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Castle War Deployment Map — Editor</h1>
+
+<div class="toolbar" style="max-width:880px;width:100%;margin-bottom:16px;">
+  <div class="toolbar-row">
+    <label style="font-size:13px;display:flex;flex-direction:column;gap:4px;flex:1 1 260px;">
+      タイトル
+      <input id="titleInput" type="text" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;">
+    </label>
+    <label style="font-size:13px;display:flex;flex-direction:column;gap:4px;flex:0 1 220px;">
+      日付(第4土曜日)
+      <select id="dateInput" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;"></select>
+    </label>
+  </div>
+  <div class="toolbar-row" style="margin-top:12px; align-items:flex-end; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
+    <div class="toggle-group" style="flex:0 0 auto;">
+      <div class="toggle-group-label">陣地</div>
+      <div class="toggle-switch" id="ownSideToggle">
+        <button data-value="east">東</button>
+        <button data-value="west">西</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="flex:0 0 auto; margin-left:28px;">
+      <div class="toggle-group-label">STF</div>
+      <div class="toggle-switch" id="stfSideToggle">
+        <button data-value="north">北</button>
+        <button data-value="south">南</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="flex:0 0 auto; margin-left:28px;">
+      <div class="toggle-group-label">同盟体制</div>
+      <div class="toggle-switch" id="allianceModeToggle" style="flex-wrap:nowrap;">
+        <button id="allianceMode2Btn" data-value="2">2同盟</button>
+        <button id="allianceMode3Btn" data-value="3">3同盟</button>
+        <input id="thirdNameInput" type="text" placeholder="第3同盟" title="第3同盟の名称(北=STF/中央=第3同盟/南=YDK)" style="margin-left:10px;padding:10px 12px;border:1.5px solid var(--panel-border);border-radius:10px;background:var(--panel-bg);color:var(--text);font-family:inherit;font-size:14px;width:150px;flex:0 0 auto;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="map-controls" role="toolbar" aria-label="マップ操作">
+  <label class="size-control" for="labelSizeInput">
+    <span>ズーム</span>
+    <span class="zoom-readout" id="zoomValue" aria-label="ズーム倍率">100%</span>
+  </label>
+  <label class="label-size-control" for="labelSizeInput">
+    <span>文字サイズ</span>
+    <input id="labelSizeInput" type="range" min="6" max="12" step="1" value="8">
+    <output id="labelSizeOutput" for="labelSizeInput">8 px</output>
+  </label>
+  <label class="size-control" for="mapColsInput">
+    <span>MAP範囲</span>
+    <span style="display:flex;align-items:center;gap:6px;">
+      <label style="display:flex;align-items:center;gap:4px;">横<input id="mapColsInput" type="number" min="10" max="80" step="2" value="40" style="width:56px; padding:4px 6px; border:1px solid var(--panel-border); border-radius:6px; background:var(--bg); color:var(--text); font:inherit;"></label>
+      <label style="display:flex;align-items:center;gap:4px;">縦<input id="mapRowsInput" type="number" min="10" max="80" step="2" value="30" style="width:56px; padding:4px 6px; border:1px solid var(--panel-border); border-radius:6px; background:var(--bg); color:var(--text); font:inherit;"></label>
+    </span>
+  </label>
+  <div class="map-tools" role="group" aria-label="配置する種類">
+    <button class="map-tool active" type="button" data-type="headquarters" aria-pressed="true">本部</button>
+    <button class="map-tool" type="button" data-type="flag" aria-pressed="false">旗</button>
+    <button class="map-tool" type="button" data-type="city" aria-pressed="false">都市</button>
+    <button class="map-tool" type="button" data-type="bearTrap" aria-pressed="false">熊罠</button>
+    <button class="map-tool" type="button" data-type="allianceBuilding" aria-pressed="false">同盟建築物</button>
+    <button class="map-tool" type="button" data-type="largeGatheringSite" aria-pressed="false">大型採集場</button>
+    <button class="map-tool" type="button" data-type="unavailable" aria-pressed="false">配置不能</button>
+    <button class="map-tool" type="button" data-type="erase" aria-pressed="false">消去</button>
+  </div>
+  <div class="map-actions">
+    <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true">編集モード</button>
+    <button id="saveLayoutButton" type="button">ファイルに保存</button>
+    <button id="loadLayoutButton" type="button">読み込み</button>
+    <input id="layoutFileInput" type="file" accept=".json,application/json">
+    <span id="layoutFileStatus" class="layout-file-status" role="status" aria-live="polite"></span>
+    <button id="undoAction" type="button" disabled>ひとつ戻る</button>
+    <button id="openObjectColorSettings" type="button">設定</button>
+    <button id="resetMapAction" type="button">リセット</button>
+  </div>
+</div>
+
+<div class="map-wrap">
+  <svg id="mapSvg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="city-dialog" id="cityNameDialog" hidden>
+  <form id="cityNameForm">
+    <label for="cityNameInput">都市名
+      <input id="cityNameInput" type="text" maxlength="24" required autocomplete="off">
+    </label>
+    <div class="city-dialog-actions">
+      <button id="cancelCityName" type="button">キャンセル</button>
+      <button type="submit">配置</button>
+    </div>
+  </form>
+</div>
+
+<div class="city-dialog" id="objectColorDialog" role="dialog" aria-modal="true" aria-labelledby="objectColorTitle" hidden>
+  <form id="objectColorForm" class="settings-form">
+    <h2 id="objectColorTitle">オブジェクトの色</h2>
+    <div class="settings-color-list">
+      <label class="settings-color-row"><span>本部</span><input type="color" data-object-color="headquarters" value="#ed817a"></label>
+      <label class="settings-color-row"><span>旗</span><input type="color" data-object-color="flag" value="#f4d57b"></label>
+      <label class="settings-color-row"><span>都市</span><input type="color" data-object-color="city" value="#82b8e8"></label>
+      <label class="settings-color-row"><span>熊罠</span><input type="color" data-object-color="bearTrap" value="#8fcda0"></label>
+      <label class="settings-color-row"><span>同盟建築物</span><input type="color" data-object-color="allianceBuilding" value="#7d96ff"></label>
+      <label class="settings-color-row"><span>大型採集場</span><input type="color" data-object-color="largeGatheringSite" value="#d5a783"></label>
+      <label class="settings-color-row"><span>配置不能</span><input type="color" data-object-color="unavailable" value="#b8b8b8"></label>
+    </div>
+    <div class="settings-color-actions">
+      <button id="resetObjectColors" type="button">初期色</button>
+      <span></span>
+      <button id="cancelObjectColors" type="button">キャンセル</button>
+      <button type="submit">保存</button>
+    </div>
+  </form>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-row" id="allianceColors" style="align-items:center;">
+    <div class="toggle-group">
+      <div class="toggle-group-label">STF</div>
+      <input id="stfColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group">
+      <div class="toggle-group-label">YDK</div>
+      <input id="ydkColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group" id="thirdColorGroup">
+      <div class="toggle-group-label">第3同盟</div>
+      <input id="thirdColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group" style="margin-left:20px;">
+      <div class="toggle-group-label">番号サイズ</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input id="numberSizeInput" type="range" min="6" max="24" step="1" style="width:100px;">
+        <span id="numberSizeValue" style="font-size:12px;color:var(--text-sub);min-width:18px;">16</span>
+      </div>
+    </div>
+    <div class="btns" style="margin-left:20px;">
+      <span style="position:relative; display:inline-block;">
+        <button id="hoverColorLink" type="button">ホバー色設定</button>
+        <div id="hoverColorPopup" style="display:none; position:absolute; bottom:100%; left:0; margin-bottom:8px; background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:10px; padding:10px; box-shadow:0 4px 16px rgba(0,0,0,0.18); z-index:20;">
+          <div class="toggle-switch toggle-switch-sm" id="hoverColorToggle" style="flex-wrap:nowrap; width:320px;">
+            <button data-value="pink" style="flex:1; background:#ff2fd6; color:#ffffff; border-color:#ff2fd6;">ピンク</button>
+            <button data-value="lime" style="flex:1; background:#c6ff1a; color:#1a1a1a; border-color:#c6ff1a;">ライム</button>
+            <button data-value="purple" style="flex:1; background:#a742ff; color:#ffffff; border-color:#a742ff;">パープル</button>
+            <button data-value="orange" style="flex:1; background:#ff7a00; color:#ffffff; border-color:#ff7a00;">オレンジ</button>
+          </div>
+        </div>
+      </span>
+      <button id="resetBtn">配置をクリア</button>
+      <button id="downloadBtn">MAPを保存</button>
+      <button id="tableDownloadBtn">テーブルを保存</button>
+      <button id="pdfBtn">PDFとして保存</button>
+      <button id="shareBtn" disabled style="display:none;">チームに共有</button>
+      <span id="shareStatus" style="font-size:12px;color:var(--text-sub);align-self:center;display:none;">共有機能を確認中...</span>
+    </div>
+  </div>
+  <div class="toolbar-row" style="margin-top:10px; align-items:center;">
+    <div class="toggle-group">
+      <div class="toggle-group-label">名前を付けて保存</div>
+      <div style="display:flex; gap:8px;">
+        <input id="saveNameInput" type="text" placeholder="保存名を入力" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;width:160px;">
+        <button id="saveNamedBtn" type="button">保存</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="margin-left:20px;">
+      <div class="toggle-group-label">保存した配置を呼び出す</div>
+      <div style="display:flex; gap:8px;">
+        <select id="savedListSelect" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;min-width:160px;">
+          <option value="">(保存なし)</option>
+        </select>
+        <button id="loadNamedBtn" type="button">読み込む</button>
+        <button id="deleteNamedBtn" type="button">削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <div class="table-card">
+    <h2><span class="dot" id="stfDot"></span>STF 配置一覧</h2>
+    <div id="stfTableHolder"></div>
+  </div>
+  <div class="table-card">
+    <h2><span class="dot" id="ydkDot"></span>YDK 配置一覧</h2>
+    <div id="ydkTableHolder"></div>
+  </div>
+  <div class="table-card" id="thirdAllianceCard" style="display:none;">
+    <h2><span class="dot" id="thirdDot"></span><span id="thirdAllianceTitle">第3同盟 配置一覧</span></h2>
+    <div id="thirdTableHolder"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---- 色定義 ----
+  var COLORS = {
+    navy:      "#1d4e79",
+    gray:      "#8f8f8f",
+    blue:      "#1f6fd6",
+    red:       "#e2231a",
+    lightgray: "#e7e7e7",
+    stf:       "#f1c40f",
+    ydk:       "#4f9d69",
+    third:     "#8e5cd9",
+    white:     "#ffffff"
+  };
+  var COLOR_LABELS = {
+    navy: "太陽城",
+    gray: "防衛リング",
+    blue: "拠点",
+    red: "レッドゾーン",
+    lightgray: "未区分",
+    stf: "STF",
+    ydk: "YDK",
+    third: "第3同盟",
+    white: "(白)"
+  };
+  var STORAGE_KEY = "castle_redzone_map_v6";
+  var META_KEY = "castle_redzone_map_meta_v1";
+  var ALLIANCE_COLOR_KEY = "castle_redzone_map_alliance_colors_v1";
+
+  function loadAllianceColors(){
+    var defaults = { stf: COLORS.stf, ydk: COLORS.ydk, third: COLORS.third };
+    try{
+      var raw = localStorage.getItem(ALLIANCE_COLOR_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object"){
+          if (typeof parsed.stf === "string") COLORS.stf = parsed.stf;
+          if (typeof parsed.ydk === "string") COLORS.ydk = parsed.ydk;
+          if (typeof parsed.third === "string") COLORS.third = parsed.third;
+          return;
+        }
+      }
+    }catch(e){ console.error("alliance color load failed", e); }
+  }
+  function saveAllianceColors(){
+    try{
+      localStorage.setItem(ALLIANCE_COLOR_KEY, JSON.stringify({ stf: COLORS.stf, ydk: COLORS.ydk, third: COLORS.third }));
+    }catch(e){ console.error("alliance color save failed", e); }
+  }
+  loadAllianceColors();
+
+  function defaultDateStr(){
+    var d = nextFourthSaturdays(1)[0];
+    return d.getFullYear() + "/" + (d.getMonth()+1) + "/" + d.getDate();
+  }
+
+  function loadMeta(){
+    var defaults = { title: "Castle War Deployment Map", date: defaultDateStr() };
+    try{
+      var raw = localStorage.getItem(META_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object"){
+          return {
+            title: (typeof parsed.title === "string" && parsed.title.length) ? parsed.title : defaults.title,
+            date: (typeof parsed.date === "string" && parsed.date.length) ? parsed.date : defaults.date
+          };
+        }
+      }
+    }catch(e){ console.error("meta load failed", e); }
+    return defaults;
+  }
+
+  function saveMeta(meta){
+    try{
+      localStorage.setItem(META_KEY, JSON.stringify(meta));
+    }catch(e){ console.error("meta save failed", e); }
+  }
+
+  var meta = loadMeta();
+
+  // ---- 自軍陣地(東西)・STF/YDK(南北)トグル ----
+  var TOGGLE_KEY = "castle_redzone_map_toggles_v1";
+  function loadToggles(){
+    var defaults = { ownSide: "west", stfSide: "north", allianceMode: "2" };
+    try{
+      var raw = localStorage.getItem(TOGGLE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object"){
+          return {
+            ownSide: (parsed.ownSide === "east" || parsed.ownSide === "west") ? parsed.ownSide : defaults.ownSide,
+            stfSide: (parsed.stfSide === "north" || parsed.stfSide === "south") ? parsed.stfSide : defaults.stfSide,
+            allianceMode: (parsed.allianceMode === "2" || parsed.allianceMode === "3") ? parsed.allianceMode : defaults.allianceMode
+          };
+        }
+      }
+    }catch(e){ console.error("toggle load failed", e); }
+    return defaults;
+  }
+  function saveToggles(t){
+    try{ localStorage.setItem(TOGGLE_KEY, JSON.stringify(t)); }catch(e){ console.error("toggle save failed", e); }
+  }
+  var toggles = loadToggles();
+
+  // ---- ホバー時のハイライト色(ネオンピンク/ネオンライムグリーン) ----
+  var HOVER_COLOR_KEY = "castle_redzone_map_hover_color_v1";
+  var HOVER_COLORS = { pink: "#ff2fd6", lime: "#c6ff1a", purple: "#a742ff", orange: "#ff7a00" };
+  function loadHoverColorKey(){
+    try{
+      var v = localStorage.getItem(HOVER_COLOR_KEY);
+      if (v === "pink" || v === "lime" || v === "purple" || v === "orange") return v;
+    }catch(e){ console.error("hover color load failed", e); }
+    return "pink";
+  }
+  function saveHoverColorKey(v){
+    try{ localStorage.setItem(HOVER_COLOR_KEY, v); }catch(e){ console.error("hover color save failed", e); }
+  }
+  var hoverColorKey = loadHoverColorKey();
+
+  // ---- マス内番号のフォントサイズ ----
+  var NUMBER_SIZE_KEY = "castle_redzone_map_number_size_v1";
+  function loadNumberFontSize(){
+    try{
+      var v = parseInt(localStorage.getItem(NUMBER_SIZE_KEY), 10);
+      if (!isNaN(v) && v >= 6 && v <= 24) return v;
+    }catch(e){ console.error("number size load failed", e); }
+    return 16;
+  }
+  function saveNumberFontSize(v){
+    try{ localStorage.setItem(NUMBER_SIZE_KEY, String(v)); }catch(e){ console.error("number size save failed", e); }
+  }
+  var numberFontSize = loadNumberFontSize();
+
+  // ---- 第3同盟の名称(3同盟体制のときのみ使用、テキスト入力で自由に変更可) ----
+  var ALLIANCE_NAME_KEY = "castle_redzone_map_third_name_v1";
+  function loadAllianceName(){
+    try{
+      var v = localStorage.getItem(ALLIANCE_NAME_KEY);
+      if (typeof v === "string" && v.length) return v;
+    }catch(e){ console.error("alliance name load failed", e); }
+    return "第3同盟";
+  }
+  function saveAllianceName(v){
+    try{ localStorage.setItem(ALLIANCE_NAME_KEY, v); }catch(e){ console.error("alliance name save failed", e); }
+  }
+  var allianceName = loadAllianceName();
+
+  // ---- グリッド設定 ----
+  // 全体範囲は中心を基準に左右・上下に広がるように設定する。
+  var GRID_N;
+  var CELL_SIZE_KEY = "diamond_map_default_cell_size_v1";
+  var LABEL_SIZE_KEY = "alliance_map_label_size_v1";
+  var MAP_COLS_KEY = "alliance_map_cols_v1";
+  var MAP_ROWS_KEY = "alliance_map_rows_v1";
+  var mapCols = 40;
+  var mapRows = 30;
+  var labelScale = 8;
+  function loadIntegerSetting(key, fallback, minValue, maxValue){
+    try{
+      var saved = parseInt(localStorage.getItem(key), 10);
+      if (!isNaN(saved) && saved >= minValue && saved <= maxValue) return saved;
+    }catch(e){ console.error("setting load failed", e); }
+    return fallback;
+  }
+  function clampMapSize(value, fallback, minValue, maxValue){
+    var numeric = parseInt(value, 10);
+    if (isNaN(numeric)) return fallback;
+    return Math.max(minValue, Math.min(maxValue, numeric));
+  }
+  function saveMapRange(){
+    try{
+      localStorage.setItem(MAP_COLS_KEY, String(mapCols));
+      localStorage.setItem(MAP_ROWS_KEY, String(mapRows));
+    }catch(e){ console.error("map range save failed", e); }
+  }
+  function loadDefaultCellSize(){
+    try{
+      var savedSize = parseInt(localStorage.getItem(CELL_SIZE_KEY), 10);
+      if (!isNaN(savedSize) && savedSize >= 24 && savedSize <= 72) return savedSize;
+    }catch(e){ console.error("cell size load failed", e); }
+    return 40;
+  }
+  function loadLabelScale(){
+    try{
+      var saved = parseFloat(localStorage.getItem(LABEL_SIZE_KEY));
+      if (!isNaN(saved) && saved >= 6 && saved <= 12) return saved;
+    }catch(e){ console.error("label scale load failed", e); }
+    return 8;
+  }
+  mapCols = loadIntegerSetting(MAP_COLS_KEY, 40, 10, 80);
+  mapRows = loadIntegerSetting(MAP_ROWS_KEY, 30, 10, 80);
+  var targetCellSize = loadDefaultCellSize();
+  labelScale = loadLabelScale();
+  var panX = 0, panY = 0;
+  var zoom = 2.5;
+  var mapHeight;
+  var CORE_MIN = 5, CORE_MAX = 8; // 中心4×4マスの範囲(列・行とも)
+  var VIEW_W, VIEW_H, HW, HH, CX, CY, HALF;
+  var CORE_HALF = (CORE_MAX - CORE_MIN + 1) / 2; // 4マス幅の半分 = 2
+  var CORE_CENTER = (CORE_MIN + CORE_MAX) / 2;    // 太陽城の中心座標 = 6.5
+
+  function updateGridMetrics(){
+    mapCols = clampMapSize(mapCols, 40, 10, 80);
+    mapRows = clampMapSize(mapRows, 30, 10, 80);
+    mapHeight = Math.max(1, window.innerHeight - document.querySelector(".map-controls").offsetHeight);
+    var minDimension = Math.min(window.innerWidth, mapHeight);
+    GRID_N = Math.max(1, Math.max(mapCols, mapRows));
+    VIEW_W = 900 * window.innerWidth / minDimension;
+    VIEW_H = 900 * mapHeight / minDimension;
+    HW = HH = 900 / (2 * GRID_N);
+    CX = VIEW_W / 2;
+    CY = VIEW_H / 2;
+    HALF = (GRID_N - 1) / 2;
+  }
+  function centerMapView(){
+    panX = VIEW_W / 2 - CX * zoom;
+    panY = VIEW_H / 2 - CY * zoom;
+  }
+  updateGridMetrics();
+  centerMapView();
+
+  function toScreen(x, y){
+    return {
+      x: CX + (x - y) * HW,
+      y: CY + (x + y) * HH
+    };
+  }
+
+  function cellPolygon(col, row){
+    var pts = [
+      toScreen(col - 0.5, row - 0.5),
+      toScreen(col + 0.5, row - 0.5),
+      toScreen(col + 0.5, row + 0.5),
+      toScreen(col - 0.5, row + 0.5)
+    ];
+    return pts.map(function(p){ return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join(" ");
+  }
+
+  function isCore(col, row){
+    return col >= CORE_MIN && col <= CORE_MAX && row >= CORE_MIN && row <= CORE_MAX;
+  }
+
+  // 各マスの属性(色・ロック有無・陣営区分)をまとめて判定する
+  // - 太陽城(中心4×4): navy / ロック
+  // - その外周1マス: グレー(東西南北の頂点4マスだけ拠点=青)/ ロックなし
+  // - それより外側の南北の中央ライン(1マス幅、太陽城中心を貫く): red / ロック
+  // - それより外側の東西の中央ライン(1マス幅): デフォルトはグレー(未ロック・塗り替え可)
+  // - それ以外: side(east/west)・vert(north/south)を判定(テーブル分類・トグル用。デフォルト表示は未区分)
+  function cellSpec(col, row){
+    if (isCore(col, row)){
+      return { locked: true, forced: "navy" };
+    }
+
+    var a = col - CORE_CENTER, b = row - CORE_CENTER; // 太陽城中心からのオフセット
+    var ring = Math.round(Math.max(Math.abs(a), Math.abs(b)) - CORE_HALF + 0.5) - 1;
+    if (ring < 0) ring = 0;
+
+    var side = (a - b) > 0 ? "east" : "west";   // dx>0=東, dx<0=西
+    var vert = (a + b) < 0 ? "north" : "south"; // dy<0=北, dy>=0=南
+
+    if (ring === 0){
+      var isCorner = Math.abs(a) === Math.abs(b); // 東西南北の頂点(拠点)
+      return { locked: true, forced: isCorner ? "blue" : "gray", ring0: true, corner: isCorner, side: side, vert: vert, baseColor: isCorner ? "blue" : "gray" };
+    }
+
+    // 南北の中央ライン(太陽城の中心を通る1マス幅の縦ライン)→ レッドゾーン・ロック
+    if (col === row){
+      return { locked: true, forced: "red" };
+    }
+
+    // 東西の中央ライン(太陽城の中心を通る1マス幅の横ライン)→ デフォルトはグレー(ロックなし)
+    var onEWLine = (a + b === 0);
+
+    return { locked: false, forced: null, ring0: false, side: side, vert: vert, onEWLine: onEWLine, ring: ring, a: a, b: b };
+  }
+
+  // 未塗装マスの表示色(初期状態ではSTF/YDKには自動着色しない)
+  function unpaintedColor(spec){
+    if (spec.ring0) return spec.baseColor;     // 防衛リング/拠点は固定
+    if (spec.onEWLine) return "gray";          // 東西の中央ラインは既定でグレー
+    return "lightgray";                        // それ以外は未区分(クリックでSTF/YDK等を配置)
+  }
+
+  // マスの陣営区分ラベル(テーブル分類用・トグル設定に応じる): "stf" | "ydk" | "third" | "other"
+  function zoneLabel(col, row, spec){
+    if (toggles.allianceMode === "3" && isThirdZoneCell(col, row)) return "third";
+    if (spec.side === toggles.ownSide){
+      return (spec.vert === toggles.stfSide) ? "stf" : "ydk";
+    }
+    return "other";
+  }
+
+  // 「陣地(自軍側の無地エリア)」を押したときに自動で塗る色。該当しないマスはnull(パレット操作で通常通り塗る)
+  function autoZoneColor(col, row, spec){
+    if (spec.ring0) return null; // 防衛リング・拠点は常に対象外(第3同盟エリアより優先)
+    var inThird = toggles.allianceMode === "3" && isThirdZoneCell(col, row);
+    if (spec.onEWLine){
+      return inThird ? "third" : null; // 東西ラインは、3同盟体制かつ第3同盟エリア内のときだけ変更可
+    }
+    if (inThird) return "third";
+    if (spec.side === toggles.ownSide){
+      return (spec.vert === toggles.stfSide) ? "stf" : "ydk";
+    }
+    return null; // 敵陣側は自動着色の対象外
+  }
+
+  // ---- 自国側のマスへの通し番号 ----
+  // 自国側(東西トグルで選ばれている方)だけを対象に、STF/YDKの区別なく行(row)ごとに上から下、
+  // 各行は左から右へ採番する(1から詰めて歯抜けなし)。デフォルト設定では列0・行1が1になる。
+  var cellNumbers = {};
+  var numberToKey = {};
+  function recomputeNumbering(){
+    cellNumbers = {};
+    numberToKey = {};
+    var cells = [];
+    for (var col = 0; col < GRID_N; col++){
+      for (var row = 0; row < GRID_N; row++){
+        var spec = cellSpec(col, row);
+        if (spec.locked) continue;
+        if (spec.side !== toggles.ownSide) continue;
+        if (spec.onEWLine && toggles.allianceMode !== "3") continue; // 2同盟体制では東西ラインは採番不要
+        cells.push({ col: col, row: row });
+      }
+    }
+    cells.sort(function(x, y){
+      if (x.row !== y.row) return x.row - y.row; // 行ごとに上から下へ
+      return x.col - y.col;                       // 各行の中は左から右へ
+    });
+    cells.forEach(function(c, idx){
+      var key = c.col + "_" + c.row;
+      var n = idx + 1;
+      cellNumbers[key] = n;
+      numberToKey[n] = key;
+    });
+  }
+  recomputeNumbering();
+
+  // ---- 3同盟体制:第3同盟の割当マス(番号ではなく位置ベース。ナンバリングを変えてもズレない) ----
+  // 自国側の対角にあたらない方の隅の5×5ブロック(ロック対象マスを含まない):
+  //   自国=西 → 列0-4・行9-13 / 自国=東 → 列9-13・行0-4
+  function isThirdZoneCell(col, row){
+    if (toggles.ownSide === "west"){
+      return col <= 4 && row >= 9;
+    }
+    return col >= 9 && row <= 4;
+  }
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    }catch(e){ console.error("load failed", e); }
+    return {};
+  }
+
+  function saveState(state){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){ console.error("save failed", e); }
+  }
+
+  var state = loadState();
+  var CLASSIFICATION_KEY = "diamond_map_classifications_v1";
+  var OBJECT_COLOR_KEY = "alliance_map_object_colors_v1";
+  var DEFAULT_TYPE_COLORS = { headquarters: "#ed817a", flag: "#f4d57b", city: "#82b8e8", bearTrap: "#8fcda0", allianceBuilding: "#7d96ff", largeGatheringSite: "#d5a783", unavailable: "#b8b8b8" };
+  function loadTypeColors(){
+    var colors = Object.assign({}, DEFAULT_TYPE_COLORS);
+    try{
+      var parsed = JSON.parse(localStorage.getItem(OBJECT_COLOR_KEY) || "{}");
+      Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
+        if (parsed && typeof parsed[type] === "string" && /^#[0-9a-fA-F]{6}$/.test(parsed[type])) colors[type] = parsed[type].toLowerCase();
+      });
+    }catch(e){ console.error("object color load failed", e); }
+    return colors;
+  }
+  function saveTypeColors(){
+    try{ localStorage.setItem(OBJECT_COLOR_KEY, JSON.stringify(TYPE_COLORS)); }
+    catch(e){ console.error("object color save failed", e); }
+  }
+  var TYPE_COLORS = loadTypeColors();
+  var TYPE_LABELS = { headquarters: "本部", flag: "旗", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
+  var OBJECT_PADDING_PX = 2;
+  var PLACEMENT_KEY = "diamond_map_placements_v1";
+  var PLACEMENT_SIZES = { headquarters: 3, bearTrap: 3, city: 2, flag: 1, allianceBuilding: 2, largeGatheringSite: 3, unavailable: 1 };
+  function loadClassifications(){
+    try{
+      var raw = localStorage.getItem(CLASSIFICATION_KEY);
+      var parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === "object"){
+        Object.keys(parsed).forEach(function(key){
+          if (parsed[key] !== "headquarters" && parsed[key] !== "flag" && parsed[key] !== "city" && parsed[key] !== "bearTrap" && parsed[key] !== "allianceBuilding" && parsed[key] !== "largeGatheringSite" && parsed[key] !== "unavailable" && parsed[key] !== "none") delete parsed[key];
+        });
+        return parsed;
+      }
+    }catch(e){ console.error("classification load failed", e); }
+    return {};
+  }
+  function saveClassifications(){
+    try{ localStorage.setItem(CLASSIFICATION_KEY, JSON.stringify(classifications)); }
+    catch(e){ console.error("classification save failed", e); }
+  }
+  var classifications = loadClassifications();
+  if (!Object.prototype.hasOwnProperty.call(classifications, "0_0")) classifications["0_0"] = "headquarters";
+  var activeTool = "headquarters";
+  var editMode = false;
+  function loadPlacements(){
+    try{
+      var raw = localStorage.getItem(PLACEMENT_KEY);
+      var parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)){
+        return parsed.filter(function(placement){
+          var isLegacyCity = placement && placement.type === "city" && Array.isArray(placement.cells) && placement.cells.length === 16;
+          return placement && PLACEMENT_SIZES[placement.type] && typeof placement.anchor === "string" && Array.isArray(placement.cells) && (placement.cells.length === PLACEMENT_SIZES[placement.type] * PLACEMENT_SIZES[placement.type] || isLegacyCity) && (placement.type !== "city" || typeof placement.name === "string");
+        });
+      }
+    }catch(e){ console.error("placement load failed", e); }
+    return [];
+  }
+  function savePlacements(){
+    try{ localStorage.setItem(PLACEMENT_KEY, JSON.stringify(placements)); }
+    catch(e){ console.error("placement save failed", e); }
+  }
+  var placements = loadPlacements();
+  var migratedCities = false;
+  var migratedAnchors = false;
+  placements.forEach(function(placement){
+    if (placement.type === "city" && placement.cells.length === 16){
+      var oldCells = placement.cells.slice();
+      var cityAnchor = placement.anchor.split("_");
+      placement.anchor = (parseInt(cityAnchor[0], 10) + 1) + "_" + (parseInt(cityAnchor[1], 10) + 1);
+      placement.anchorMode = "bottom-cell";
+      placement.cells = getPlacementCells("city", placement.anchor);
+      var newCells = {};
+      placement.cells.forEach(function(key){ newCells[key] = true; });
+      oldCells.forEach(function(key){
+        if (!newCells[key] && classifications[key] === "city") delete classifications[key];
+      });
+      placement.cells.forEach(function(key){ classifications[key] = "city"; });
+      migratedCities = true;
+    }
+    if (placement.anchorMode !== "bottom-cell"){
+      var anchor = placement.anchor.split("_");
+      var shift = placement.anchorMode === "origin" ? PLACEMENT_SIZES[placement.type] - 1 :
+        (placement.type === "headquarters" || placement.type === "bearTrap" ? 1 : 0);
+      placement.anchor = (parseInt(anchor[0], 10) + shift) + "_" + (parseInt(anchor[1], 10) + shift);
+      placement.anchorMode = "bottom-cell";
+      migratedAnchors = true;
+    }
+  });
+  if (migratedCities || migratedAnchors){
+    saveClassifications();
+    savePlacements();
+  }
+  function getPlacementCells(type, anchorKey){
+    var parts = anchorKey.split("_");
+    var col = parseInt(parts[0], 10), row = parseInt(parts[1], 10);
+    var size = PLACEMENT_SIZES[type];
+    var offsets = Array.from({length:size}, function(_, index){ return index - size + 1; });
+    var cells = [];
+    offsets.forEach(function(colOffset){
+      offsets.forEach(function(rowOffset){
+        cells.push((col + colOffset) + "_" + (row + rowOffset));
+      });
+    });
+    return cells;
+  }
+  function removePlacementAt(index){
+    var placement = placements[index];
+    placements.splice(index, 1);
+    placement.cells.forEach(function(key){ syncPlacementCell(key, placement.type); });
+  }
+  function syncPlacementCell(key, removedType){
+    var underlying = null;
+    for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
+      if (placements[layerIndex].cells.indexOf(key) !== -1){
+        underlying = placements[layerIndex];
+        break;
+      }
+    }
+    if (underlying) classifications[key] = underlying.type;
+    else if (classifications[key] === removedType) delete classifications[key];
+  }
+  var undoStack = [];
+  var undoButton = document.getElementById("undoAction");
+  function updateUndoButton(){ undoButton.disabled = undoStack.length === 0; }
+  function rememberMapState(){
+    undoStack.push({
+      classifications: JSON.parse(JSON.stringify(classifications)),
+      placements: JSON.parse(JSON.stringify(placements)),
+      panX: panX,
+      panY: panY,
+      zoom: zoom,
+      targetCellSize: targetCellSize
+    });
+    if (undoStack.length > 50) undoStack.shift();
+    updateUndoButton();
+  }
+  function movePlacement(placement, deltaCol, deltaRow){
+    var placementIndex = placements.indexOf(placement);
+    if (placementIndex === -1 || (!deltaCol && !deltaRow)) return;
+    rememberMapState();
+    var previousCells = placement.cells.slice();
+    var anchor = placement.anchor.split("_");
+    placement.anchor = (parseInt(anchor[0], 10) + deltaCol) + "_" + (parseInt(anchor[1], 10) + deltaRow);
+    placement.cells = getPlacementCells(placement.type, placement.anchor);
+    placements.splice(placementIndex, 1);
+    placements.push(placement);
+    var changedCells = {};
+    previousCells.concat(placement.cells).forEach(function(key){ changedCells[key] = true; });
+    Object.keys(changedCells).forEach(function(key){ syncPlacementCell(key, placement.type); });
+    saveClassifications();
+    savePlacements();
+    render();
+  }
+  function undoMapAction(){
+    if (!undoStack.length) return;
+    var previous = undoStack.pop();
+    classifications = previous.classifications;
+    placements = previous.placements;
+    panX = previous.panX;
+    panY = previous.panY;
+    zoom = previous.zoom;
+    targetCellSize = previous.targetCellSize;
+    if (cellSizeInput) cellSizeInput.value = String(targetCellSize);
+    if (cellSizeOutput) cellSizeOutput.textContent = targetCellSize + " px";
+    updateGridMetrics();
+    try{ localStorage.setItem(CELL_SIZE_KEY, String(targetCellSize)); }
+    catch(e){ console.error("cell size save failed", e); }
+    saveClassifications();
+    savePlacements();
+    document.getElementById("zoomValue").textContent = Math.round(zoom * 100) + "%";
+    updateUndoButton();
+    render();
+  }
+  undoButton.addEventListener("click", undoMapAction);
+  document.getElementById("resetMapAction").addEventListener("click", function(){
+    if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * 2.5) && panY === (VIEW_H / 2 - CY * 2.5) && zoom === 2.5) return;
+    rememberMapState();
+    placements = [];
+    classifications = { "0_0": "none" };
+    zoom = 2.5;
+    centerMapView();
+    saveClassifications();
+    savePlacements();
+    document.getElementById("zoomValue").textContent = "250%";
+    render();
+  });
+  var layoutFileInput = document.getElementById("layoutFileInput");
+  var layoutFileStatus = document.getElementById("layoutFileStatus");
+  document.getElementById("saveLayoutButton").addEventListener("click", function(){
+    var layout = {
+      format: "alliance-map-layout",
+      version: 1,
+      savedAt: new Date().toISOString(),
+      classifications: classifications,
+      placements: placements,
+      objectColors: TYPE_COLORS,
+      view: { panX: panX, panY: panY, zoom: zoom, cellSize: targetCellSize, mapCols: mapCols, mapRows: mapRows }
+    };
+    var blob = new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = "alliance-map-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    layoutFileStatus.textContent = "JSONを保存しました";
+  });
+  document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
+  layoutFileInput.addEventListener("change", function(){
+    var file = layoutFileInput.files && layoutFileInput.files[0];
+    if (!file) return;
+    file.text().then(function(text){
+      var imported = JSON.parse(text);
+      if (!imported || imported.format !== "alliance-map-layout" || imported.version !== 1 ||
+          !imported.classifications || typeof imported.classifications !== "object" || Array.isArray(imported.classifications) ||
+          !Array.isArray(imported.placements) || imported.placements.length > 2000){
+        throw new Error("未対応の保存ファイルです");
+      }
+      var nextClassifications = {};
+      Object.keys(imported.classifications).forEach(function(key){
+        var value = imported.classifications[key];
+        if (!/^-?\d+_-?\d+$/.test(key) || (value !== "none" && !Object.prototype.hasOwnProperty.call(TYPE_COLORS, value))){
+          throw new Error("セルデータが不正です");
+        }
+        nextClassifications[key] = value;
+      });
+      var nextPlacements = imported.placements.map(function(item){
+        if (!item || !Object.prototype.hasOwnProperty.call(PLACEMENT_SIZES, item.type) ||
+            typeof item.anchor !== "string" || !/^-?\d+_-?\d+$/.test(item.anchor)){
+          throw new Error("配置データが不正です");
+        }
+        var placement = {
+          type: item.type,
+          anchor: item.anchor,
+          anchorMode: "bottom-cell",
+          cells: getPlacementCells(item.type, item.anchor)
+        };
+        if (item.type === "city" || item.type === "allianceBuilding"){
+          if (typeof item.name !== "string" || !item.name.trim() || item.name.trim().length > 24){
+            throw new Error("名称が不正です");
+          }
+          placement.name = item.name.trim();
+        }
+        placement.cells.forEach(function(key){ nextClassifications[key] = placement.type; });
+        return placement;
+      });
+      var nextTypeColors = Object.assign({}, TYPE_COLORS);
+      if (imported.objectColors !== undefined){
+        if (!imported.objectColors || typeof imported.objectColors !== "object" || Array.isArray(imported.objectColors)){
+          throw new Error("色設定が不正です");
+        }
+        Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
+          var color = imported.objectColors[type];
+          if (color !== undefined){
+            if (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("色設定が不正です");
+            nextTypeColors[type] = color.toLowerCase();
+          }
+        });
+      }
+      var view = imported.view && typeof imported.view === "object" ? imported.view : {};
+      var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : 2.5;
+      var nextPanX = Number.isFinite(view.panX) ? view.panX : (VIEW_W / 2 - CX * nextZoom);
+      var nextPanY = Number.isFinite(view.panY) ? view.panY : (VIEW_H / 2 - CY * nextZoom);
+      var nextCellSize = Number.isInteger(view.cellSize) && view.cellSize >= 24 && view.cellSize <= 72 ? view.cellSize : targetCellSize;
+      var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 40, 10, 80) : mapCols;
+      var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 30, 10, 80) : mapRows;
+      rememberMapState();
+      classifications = nextClassifications;
+      placements = nextPlacements;
+      TYPE_COLORS = nextTypeColors;
+      panX = nextPanX;
+      panY = nextPanY;
+      zoom = nextZoom;
+      targetCellSize = nextCellSize;
+      mapCols = nextMapCols;
+      mapRows = nextMapRows;
+      if (cellSizeInput) cellSizeInput.value = String(targetCellSize);
+      if (cellSizeOutput) cellSizeOutput.textContent = targetCellSize + " px";
+      mapColsInput.value = String(mapCols);
+      mapRowsInput.value = String(mapRows);
+      zoomValue.textContent = Math.round(zoom * 100) + "%";
+      updateGridMetrics();
+      saveClassifications();
+      savePlacements();
+      saveMapRange();
+      saveTypeColors();
+      refreshObjectColorInputs();
+      updateMapToolColors();
+      try{ localStorage.setItem(CELL_SIZE_KEY, String(targetCellSize)); }
+      catch(e){ console.error("cell size save failed", e); }
+      render();
+      layoutFileStatus.textContent = "配置を読み込みました";
+    }).catch(function(error){
+      layoutFileStatus.textContent = "読み込めません: " + error.message;
+    }).finally(function(){
+      layoutFileInput.value = "";
+    });
+  });
+  function placeStructure(type, anchorKey, name){
+    var cells = getPlacementCells(type, anchorKey);
+    rememberMapState();
+    cells.forEach(function(key){ classifications[key] = type; });
+    var placement = { type: type, anchor: anchorKey, cells: cells };
+    placement.anchorMode = "bottom-cell";
+    if (type === "city" || type === "allianceBuilding") placement.name = name;
+    placements.push(placement);
+    saveClassifications();
+    savePlacements();
+    render();
+  }
+  function eraseAt(key){
+    var index = -1;
+    for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
+      if (placements[layerIndex].cells.indexOf(key) !== -1){
+        index = layerIndex;
+        break;
+      }
+    }
+    if (index === -1 && (!Object.prototype.hasOwnProperty.call(classifications, key) || classifications[key] === "none")) return;
+    rememberMapState();
+    if (index !== -1) removePlacementAt(index);
+    else classifications[key] = "none";
+    saveClassifications();
+    savePlacements();
+    render();
+  }
+  function handleCellClick(key, event){
+    if (!editMode) return;
+    if (suppressNextClick || event.ctrlKey) return;
+    if (activeTool === "erase"){
+      eraseAt(key);
+      return;
+    }
+    if (activeTool === "city" || activeTool === "allianceBuilding"){
+      var topPlacement = null;
+      for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
+        if (placements[layerIndex].cells.indexOf(key) !== -1){
+          topPlacement = placements[layerIndex];
+          break;
+        }
+      }
+      var existingNamedPlacement = topPlacement && (topPlacement.type === "city" || topPlacement.type === "allianceBuilding") ? topPlacement : null;
+      pendingCity = existingNamedPlacement ? { placement: existingNamedPlacement } : { anchor: key };
+      cityNameInput.value = existingNamedPlacement ? (existingNamedPlacement.name || "") : "";
+      cityNameDialog.hidden = false;
+      cityNameInput.focus();
+      return;
+    }
+    var fixedName = activeTool === "headquarters" ? "本部" : (activeTool === "bearTrap" ? "熊罠" : "");
+    placeStructure(activeTool, key, fixedName);
+  }
+  var cityNameDialog = document.getElementById("cityNameDialog");
+  var cityNameForm = document.getElementById("cityNameForm");
+  var cityNameInput = document.getElementById("cityNameInput");
+  var pendingCity = null;
+  cityNameForm.addEventListener("submit", function(event){
+    event.preventDefault();
+    var name = cityNameInput.value.trim();
+    if (!name || !pendingCity) return;
+    var targetType = pendingCity.placement ? pendingCity.placement.type : (activeTool === "allianceBuilding" ? "allianceBuilding" : "city");
+    if (pendingCity.placement){
+      if (pendingCity.placement.name === name){
+        pendingCity = null;
+        cityNameDialog.hidden = true;
+        return;
+      }
+      rememberMapState();
+      pendingCity.placement.name = name;
+      savePlacements();
+      render();
+    }else{
+      placeStructure(targetType, pendingCity.anchor, name);
+    }
+    pendingCity = null;
+    cityNameDialog.hidden = true;
+  });
+  document.getElementById("cancelCityName").addEventListener("click", function(){
+    pendingCity = null;
+    cityNameDialog.hidden = true;
+  });
+
+  var svgns = "http://www.w3.org/2000/svg";
+  var svg = document.getElementById("mapSvg");
+  var mapWrap = document.querySelector(".map-wrap");
+  var gridLayer = null;
+  var dragState = null;
+  var objectDragState = null;
+  var suppressNextClick = false;
+  window.addEventListener("resize", function(){
+    updateGridMetrics();
+    render();
+  });
+  var cellSizeInput = document.getElementById("cellSizeInput");
+  var cellSizeOutput = document.getElementById("cellSizeOutput");
+  var labelSizeInput = document.getElementById("labelSizeInput");
+  var labelSizeOutput = document.getElementById("labelSizeOutput");
+  var mapColsInput = document.getElementById("mapColsInput");
+  var mapRowsInput = document.getElementById("mapRowsInput");
+  var editModeToggle = document.getElementById("editModeToggle");
+  var zoomValue = document.getElementById("zoomValue");
+  var objectColorDialog = document.getElementById("objectColorDialog");
+  var objectColorForm = document.getElementById("objectColorForm");
+  var objectColorInputs = Array.from(objectColorForm.querySelectorAll("[data-object-color]"));
+  function refreshObjectColorInputs(){
+    objectColorInputs.forEach(function(input){ input.value = TYPE_COLORS[input.getAttribute("data-object-color")]; });
+  }
+  function updateMapToolColors(){
+    document.querySelectorAll(".map-tool[data-type]").forEach(function(button){
+      var type = button.getAttribute("data-type");
+      if (TYPE_COLORS[type]) button.style.setProperty("--tool-color", TYPE_COLORS[type]);
+    });
+  }
+  function closeObjectColorDialog(){ objectColorDialog.hidden = true; }
+  document.getElementById("openObjectColorSettings").addEventListener("click", function(){
+    refreshObjectColorInputs();
+    objectColorDialog.hidden = false;
+    objectColorInputs[0].focus();
+  });
+  document.getElementById("cancelObjectColors").addEventListener("click", closeObjectColorDialog);
+  document.getElementById("resetObjectColors").addEventListener("click", function(){
+    objectColorInputs.forEach(function(input){ input.value = DEFAULT_TYPE_COLORS[input.getAttribute("data-object-color")]; });
+  });
+  objectColorDialog.addEventListener("click", function(event){
+    if (event.target === objectColorDialog) closeObjectColorDialog();
+  });
+  document.addEventListener("keydown", function(event){
+    if (event.key === "Escape" && !objectColorDialog.hidden) closeObjectColorDialog();
+  });
+  objectColorForm.addEventListener("submit", function(event){
+    event.preventDefault();
+    objectColorInputs.forEach(function(input){ TYPE_COLORS[input.getAttribute("data-object-color")] = input.value.toLowerCase(); });
+    saveTypeColors();
+    updateMapToolColors();
+    closeObjectColorDialog();
+    render();
+  });
+  refreshObjectColorInputs();
+  updateMapToolColors();
+  function refreshMapRangeInputs(){
+    mapColsInput.value = String(mapCols);
+    mapRowsInput.value = String(mapRows);
+  }
+  function refreshLabelSizeInput(){
+    labelSizeInput.value = String(labelScale);
+    labelSizeOutput.textContent = Math.round(labelScale) + " px";
+  }
+  refreshLabelSizeInput();
+  refreshMapRangeInputs();
+  labelSizeInput.addEventListener("input", function(){
+    labelScale = Number(labelSizeInput.value);
+    labelScale = Math.min(12, Math.max(6, labelScale));
+    refreshLabelSizeInput();
+    try{ localStorage.setItem(LABEL_SIZE_KEY, String(labelScale)); }
+    catch(e){ console.error("label size save failed", e); }
+    render();
+  });
+  function applyMapRange(){
+    mapCols = clampMapSize(mapColsInput.value, 40, 10, 80);
+    mapRows = clampMapSize(mapRowsInput.value, 30, 10, 80);
+    refreshMapRangeInputs();
+    saveMapRange();
+    updateGridMetrics();
+    render();
+  }
+  mapColsInput.addEventListener("change", applyMapRange);
+  mapRowsInput.addEventListener("change", applyMapRange);
+  function updateEditModeButton(){
+    editModeToggle.classList.toggle("active", editMode);
+    editModeToggle.classList.toggle("view-mode", !editMode);
+    editModeToggle.setAttribute("aria-pressed", editMode ? "true" : "false");
+    editModeToggle.textContent = editMode ? "編集モード" : "閲覧モード";
+    editModeToggle.title = editMode ? "配置・編集が有効です" : "配置をせずにMAP閲覧のみです";
+    mapWrap.classList.toggle("edit-mode", editMode);
+  }
+  editModeToggle.addEventListener("click", function(){
+    editMode = !editMode;
+    updateEditModeButton();
+    updateMapCursor();
+  });
+  document.querySelectorAll(".map-tool").forEach(function(button){
+    button.addEventListener("click", function(){
+      if (!editMode) return;
+      activeTool = button.getAttribute("data-type");
+      document.querySelectorAll(".map-tool").forEach(function(tool){
+        var selected = tool === button;
+        tool.classList.toggle("active", selected);
+        tool.setAttribute("aria-pressed", selected ? "true" : "false");
+      });
+    });
+  });
+  updateEditModeButton();
+  updateMapCursor();
+  var activePointers = {};
+  var pinchState = null;
+  function clientToSvg(clientX, clientY){
+    var bounds = svg.getBoundingClientRect();
+    return {
+      x: (clientX - bounds.left) * VIEW_W / bounds.width,
+      y: (clientY - bounds.top) * VIEW_H / bounds.height
+    };
+  }
+  function cellKeyAtClientPoint(clientX, clientY){
+    var point = clientToSvg(clientX, clientY);
+    var worldX = (point.x - panX) / zoom;
+    var worldY = (point.y - panY) / zoom;
+    var dx = (worldX - CX) / HW;
+    var dy = (worldY - CY) / HH;
+    return Math.round((dx + dy) / 2) + "_" + Math.round((dy - dx) / 2);
+  }
+  function startObjectDrag(event, placement, objectLayer){
+    if (!editMode) return;
+    if (event.button !== 0 || event.ctrlKey || event.pointerType === "touch") return;
+    event.stopPropagation();
+    objectDragState = {
+      pointerId: event.pointerId,
+      placement: placement,
+      objectLayer: objectLayer,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false
+    };
+  }
+  function zoomAt(nextZoom, pointX, pointY){
+    nextZoom = Math.max(0.25, Math.min(4, nextZoom));
+    var worldX = (pointX - panX) / zoom;
+    var worldY = (pointY - panY) / zoom;
+    zoom = nextZoom;
+    zoomValue.textContent = Math.round(zoom * 100) + "%";
+    panX = pointX - worldX * zoom;
+    panY = pointY - worldY * zoom;
+    render();
+  }
+  svg.addEventListener("wheel", function(event){
+    if (!event.ctrlKey) return;
+    event.preventDefault();
+    var point = clientToSvg(event.clientX, event.clientY);
+    zoomAt(zoom * Math.exp(-event.deltaY * 0.001), point.x, point.y);
+  }, {passive:false});
+  function updateMapCursor(){
+    mapWrap.classList.toggle("edit-lock", false);
+    if (!editMode) {
+      mapWrap.style.cursor = "grab";
+      return;
+    }
+    mapWrap.style.cursor = "default";
+  }
+  svg.addEventListener("pointerdown", function(event){
+    activePointers[event.pointerId] = {x:event.clientX, y:event.clientY, type:event.pointerType};
+    var pointerIds = Object.keys(activePointers);
+    if (event.pointerType === "touch" && pointerIds.length === 2){
+      var first = activePointers[pointerIds[0]], second = activePointers[pointerIds[1]];
+      var center = clientToSvg((first.x + second.x) / 2, (first.y + second.y) / 2);
+      var dx = first.x - second.x, dy = first.y - second.y;
+      pinchState = {
+        distance: Math.sqrt(dx * dx + dy * dy),
+        zoom: zoom,
+        worldX: (center.x - panX) / zoom,
+        worldY: (center.y - panY) / zoom
+      };
+      dragState = null;
+      return;
+    }
+    if (event.button !== 0) return;
+    dragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      panX: panX,
+      panY: panY,
+      canPan: event.pointerType !== "mouse" || !editMode || event.ctrlKey,
+      moved: false
+    };
+    if (dragState.canPan && !editMode) {
+      mapWrap.classList.add("dragging");
+      mapWrap.style.cursor = "grabbing";
+    }
+  });
+  window.addEventListener("pointermove", function(event){
+    if (objectDragState && event.pointerId === objectDragState.pointerId){
+      var objectDx = event.clientX - objectDragState.startX;
+      var objectDy = event.clientY - objectDragState.startY;
+      if (Math.abs(objectDx) + Math.abs(objectDy) > 3) objectDragState.moved = true;
+      if (objectDragState.moved){
+        var objectBounds = svg.getBoundingClientRect();
+        var localDx = objectDx * VIEW_W / objectBounds.width / zoom;
+        var localDy = objectDy * VIEW_H / objectBounds.height / zoom;
+        objectDragState.objectLayer.setAttribute("transform", "translate(" + localDx + " " + localDy + ")");
+        mapWrap.classList.add("dragging");
+      }
+      return;
+    }
+    if (activePointers[event.pointerId]){
+      activePointers[event.pointerId].x = event.clientX;
+      activePointers[event.pointerId].y = event.clientY;
+    }
+    if (pinchState && Object.keys(activePointers).length >= 2){
+      var pinchPointers = Object.keys(activePointers).slice(0, 2).map(function(id){ return activePointers[id]; });
+      var pinchDx = pinchPointers[0].x - pinchPointers[1].x;
+      var pinchDy = pinchPointers[0].y - pinchPointers[1].y;
+      var pinchDistance = Math.sqrt(pinchDx * pinchDx + pinchDy * pinchDy);
+      var pinchCenter = clientToSvg((pinchPointers[0].x + pinchPointers[1].x) / 2, (pinchPointers[0].y + pinchPointers[1].y) / 2);
+      zoom = Math.max(0.25, Math.min(4, pinchState.zoom * pinchDistance / pinchState.distance));
+      zoomValue.textContent = Math.round(zoom * 100) + "%";
+      panX = pinchCenter.x - pinchState.worldX * zoom;
+      panY = pinchCenter.y - pinchState.worldY * zoom;
+      render();
+      return;
+    }
+    if (!dragState || event.pointerId !== dragState.pointerId || !dragState.canPan) return;
+    var dx = event.clientX - dragState.startX;
+    var dy = event.clientY - dragState.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) dragState.moved = true;
+    if (!dragState.moved || !gridLayer) return;
+    mapWrap.classList.add("dragging");
+    var bounds = svg.getBoundingClientRect();
+    var scaleX = VIEW_W / bounds.width;
+    var scaleY = VIEW_H / bounds.height;
+    gridLayer.setAttribute("transform", "translate(" + (dragState.panX + dx * scaleX) + " " + (dragState.panY + dy * scaleY) + ") scale(" + zoom + ")");
+  });
+  function finishDrag(event){
+    if (objectDragState && event.pointerId === objectDragState.pointerId){
+      var objectDrag = objectDragState;
+      objectDragState = null;
+      mapWrap.classList.remove("dragging");
+      if (objectDrag.moved){
+        var objectBounds = svg.getBoundingClientRect();
+        var dx = (event.clientX - objectDrag.startX) * VIEW_W / objectBounds.width / zoom;
+        var dy = (event.clientY - objectDrag.startY) * VIEW_H / objectBounds.height / zoom;
+        var deltaCol = Math.round((dx / HW + dy / HH) / 2);
+        var deltaRow = Math.round((dy / HH - dx / HW) / 2);
+        suppressNextClick = true;
+        window.setTimeout(function(){ suppressNextClick = false; }, 0);
+        if (deltaCol || deltaRow) movePlacement(objectDrag.placement, deltaCol, deltaRow);
+        else render();
+      }
+      return;
+    }
+    delete activePointers[event.pointerId];
+    if (pinchState && Object.keys(activePointers).length < 2) pinchState = null;
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    if (dragState.moved){
+      var bounds = svg.getBoundingClientRect();
+      panX = dragState.panX + (event.clientX - dragState.startX) * VIEW_W / bounds.width;
+      panY = dragState.panY + (event.clientY - dragState.startY) * VIEW_H / bounds.height;
+      suppressNextClick = true;
+      window.setTimeout(function(){ suppressNextClick = false; }, 0);
+      render();
+    }
+    dragState = null;
+    mapWrap.classList.remove("dragging");
+    updateMapCursor();
+  }
+  window.addEventListener("pointerup", finishDrag);
+  window.addEventListener("pointercancel", finishDrag);
+  window.addEventListener("keydown", function(event){
+    if (event.key === "Control") mapWrap.classList.add("pan-ready");
+  });
+  window.addEventListener("keyup", function(event){
+    if (event.key === "Control") mapWrap.classList.remove("pan-ready");
+  });
+  window.addEventListener("blur", function(){ mapWrap.classList.remove("pan-ready"); });
+
+  function clearSvg(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+  }
+
+  function el(tag, attrs){
+    var e = document.createElementNS(svgns, tag);
+    for (var k in attrs){ e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+
+  function insetPolygon(points, paddingPx){
+    var vertices = points.split(" ").map(function(point){
+      var pair = point.split(",");
+      return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
+    });
+    var center = vertices.reduce(function(total, point){
+      total.x += point.x / vertices.length;
+      total.y += point.y / vertices.length;
+      return total;
+    }, { x: 0, y: 0 });
+    var minDimension = Math.min(window.innerWidth, mapHeight);
+    var inset = paddingPx * 900 / (minDimension * zoom);
+    var apothem = HW / Math.SQRT2;
+    var scale = Math.max(0, 1 - inset / apothem);
+    return vertices.map(function(point){
+      return (center.x + (point.x - center.x) * scale).toFixed(1) + "," +
+        (center.y + (point.y - center.y) * scale).toFixed(1);
+    }).join(" ");
+  }
+  function cellInsetPolygon(points, insetScale){
+    var vertices = points.split(" ").map(function(point){
+      var pair = point.split(",");
+      return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
+    });
+    var center = vertices.reduce(function(total, point){
+      total.x += point.x / vertices.length;
+      total.y += point.y / vertices.length;
+      return total;
+    }, { x: 0, y: 0 });
+    var inset = Math.max(0, 1 - insetScale);
+    return vertices.map(function(point){
+      return (center.x + (point.x - center.x) * (1 - inset)).toFixed(1) + "," +
+        (center.y + (point.y - center.y) * (1 - inset)).toFixed(1);
+    }).join(" ");
+  }
+
+  function placementPolygon(placement){
+    var anchor = placement.anchor.split("_");
+    var size = PLACEMENT_SIZES[placement.type];
+    var offset = 1 - size;
+    var col = parseInt(anchor[0], 10) + offset - 0.5;
+    var row = parseInt(anchor[1], 10) + offset - 0.5;
+    return [
+      toScreen(col, row),
+      toScreen(col + size, row),
+      toScreen(col + size, row + size),
+      toScreen(col, row + size)
+    ].map(function(point){ return point.x.toFixed(1) + "," + point.y.toFixed(1); }).join(" ");
+  }
+
+  function render(){
+    clearSvg();
+    svg.setAttribute("viewBox", "0 0 " + VIEW_W + " " + VIEW_H);
+
+    gridLayer = el("g", {transform: "translate(" + panX + " " + panY + ") scale(" + zoom + ")"});
+    var placedCells = {};
+    placements.forEach(function(placement, layerIndex){
+      placement.cells.forEach(function(key){ placedCells[key] = true; });
+    });
+    var colStart = -Math.floor(mapCols / 2);
+    var colEnd = Math.ceil(mapCols / 2) - 1;
+    var rowStart = -Math.floor(mapRows / 2);
+    var rowEnd = Math.ceil(mapRows / 2) - 1;
+    for (var col = colStart; col <= colEnd; col++){
+      for (var row = rowStart; row <= rowEnd; row++){
+        var key = col + "_" + row;
+        var category = classifications[key];
+        var points = cellPolygon(col, row);
+        var polygon = el("polygon", {
+          points: points,
+          fill: "#ffffff",
+          stroke: "none",
+          class: "map-cell",
+          "data-cell-key": key
+        });
+        (function(cellKey, cell){
+          cell.addEventListener("click", function(event){
+            handleCellClick(cellKey, event);
+          });
+        })(key, polygon);
+        gridLayer.appendChild(polygon);
+      }
+    }
+    var labelLayer = el("g", {class: "object-label-layer", "pointer-events": "none"});
+    placements.forEach(function(placement, layerIndex){
+      var size = PLACEMENT_SIZES[placement.type];
+      var footprint = placementPolygon(placement);
+      var objectLayer = el("g", {
+        class: "object-layer",
+        "data-layer-id": "layer-" + layerIndex + "-" + placement.type + "-" + placement.anchor,
+        "data-object-type": placement.type,
+        "data-anchor": placement.anchor,
+        "data-name": (placement.type === "city" || placement.type === "allianceBuilding") ? (placement.name || TYPE_LABELS[placement.type]) : TYPE_LABELS[placement.type]
+      });
+      objectLayer.appendChild(el("polygon", {
+        points: footprint,
+        fill: "transparent",
+        stroke: "none",
+        "pointer-events": "all",
+        class: "object-padding"
+      }));
+      var innerPaddingRatio = 0.18;
+      var shape = el("polygon", {
+        points: cellInsetPolygon(footprint, 1 - innerPaddingRatio),
+        fill: TYPE_COLORS[placement.type],
+        stroke: "none",
+        "pointer-events": "all",
+        class: placement.type === "city" ? "city-fill" : "object-shape"
+      });
+      objectLayer.appendChild(shape);
+      objectLayer.addEventListener("pointerdown", function(event){
+        if (event.ctrlKey || event.metaKey) return;
+        startObjectDrag(event, placement, objectLayer);
+      });
+      objectLayer.addEventListener("click", function(event){
+        if (event.ctrlKey || event.metaKey) return;
+        handleCellClick(cellKeyAtClientPoint(event.clientX, event.clientY), event);
+      });
+      if (placement.type !== "flag" && placement.type !== "unavailable"){
+        var vertices = footprint.split(" ").map(function(point){
+          var pair = point.split(",");
+          return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
+        });
+        var center = vertices.reduce(function(total, point){
+          total.x += point.x / vertices.length;
+          total.y += point.y / vertices.length;
+          return total;
+        }, { x: 0, y: 0 });
+        var label = (placement.type === "city" || placement.type === "allianceBuilding") ? (placement.name || TYPE_LABELS[placement.type]) : TYPE_LABELS[placement.type];
+        var baseFontSize = Math.max(6, Math.min(12, labelScale));
+        var minX = Math.min.apply(null, vertices.map(function(point){ return point.x; }));
+        var maxX = Math.max.apply(null, vertices.map(function(point){ return point.x; }));
+        var allowedWidth = (maxX - minX) * (1 - innerPaddingRatio);
+        var labelText = el("text", {
+          x: center.x,
+          y: center.y + baseFontSize * 0.35,
+          "text-anchor": "middle",
+          "font-size": baseFontSize,
+          "font-weight": "600",
+          fill: "#222222",
+          "pointer-events": "none",
+          "data-fit-width": allowedWidth,
+          "data-center-y": center.y,
+          class: "object-label",
+          style: "paint-order:stroke;stroke:#ffffff;stroke-width:" + (baseFontSize * 0.22) + "px;stroke-linejoin:round;"
+        });
+        labelText.textContent = label;
+        labelLayer.appendChild(labelText);
+      }
+      gridLayer.appendChild(objectLayer);
+    });
+    Object.keys(classifications).forEach(function(key){
+      var category = classifications[key];
+      if (!TYPE_COLORS[category] || placedCells[key]) return;
+      var parts = key.split("_");
+      var points = cellPolygon(parseInt(parts[0], 10) + HALF, parseInt(parts[1], 10) + HALF);
+      gridLayer.appendChild(el("polygon", {
+        points: points,
+        fill: "#ffffff",
+        stroke: "none",
+        "pointer-events": "none",
+        class: "object-padding"
+      }));
+      gridLayer.appendChild(el("polygon", {
+        points: cellInsetPolygon(points, 0.82),
+        fill: TYPE_COLORS[category],
+        stroke: "none",
+        "pointer-events": "none",
+        class: "legacy-object-fill"
+      }));
+    });
+    var gridLineLayer = el("g", {class: "map-grid-lines", "pointer-events": "none"});
+    for (var gridCol = colStart; gridCol <= colEnd; gridCol++){
+      for (var gridRow = rowStart; gridRow <= rowEnd; gridRow++){
+        gridLineLayer.appendChild(el("polygon", {
+          points: cellPolygon(gridCol, gridRow),
+          fill: "none",
+          stroke: "#b8b8b8",
+          "stroke-width": 0.3,
+          class: "map-grid-line-cell"
+        }));
+      }
+    }
+    gridLayer.appendChild(gridLineLayer);
+    gridLayer.appendChild(labelLayer);
+    gridLayer.appendChild(el("circle", {
+      cx: CX,
+      cy: CY,
+      r: 4 * 900 / (Math.min(window.innerWidth, mapHeight) * zoom),
+      fill: "#222222",
+      stroke: "#ffffff",
+      "stroke-width": 1.5,
+      "vector-effect": "non-scaling-stroke",
+      "pointer-events": "none",
+      class: "map-center-point"
+    }));
+    svg.appendChild(gridLayer);
+    Array.from(gridLayer.querySelectorAll(".object-label")).forEach(function(labelText){
+      var requestedSize = parseFloat(labelText.getAttribute("font-size"));
+      var allowedWidth = parseFloat(labelText.getAttribute("data-fit-width"));
+      var textWidth = labelText.getComputedTextLength();
+      var renderedWidth = textWidth + requestedSize * 0.22;
+      if (textWidth > 0 && renderedWidth > allowedWidth){
+        var fittedSize = requestedSize * allowedWidth / renderedWidth;
+        labelText.setAttribute("font-size", fittedSize);
+        labelText.setAttribute("y", parseFloat(labelText.getAttribute("data-center-y")) + fittedSize * 0.35);
+        labelText.setAttribute("style", "paint-order:stroke;stroke:#ffffff;stroke-width:" + (fittedSize * 0.22) + "px;stroke-linejoin:round;");
+      }
+    });
+    return;
+
+    // 背景
+    svg.appendChild(el("rect", {x:0,y:0,width:900,height:900,fill:"#ffffff"}));
+
+    // 背景の点線グリッド(縦横)
+    var gGuides = el("g", {stroke:"#cfd6dc", "stroke-width":1, "stroke-dasharray":"1,4"});
+    for (var gx = 40; gx <= 860; gx += 40){
+      gGuides.appendChild(el("line", {x1:gx,y1:20,x2:gx,y2:880}));
+    }
+    for (var gy = 40; gy <= 880; gy += 40){
+      gGuides.appendChild(el("line", {x1:20,y1:gy,x2:860,y2:gy}));
+    }
+    svg.appendChild(gGuides);
+
+    // 外枠の点線(赤・青の基準線ふう)
+    svg.appendChild(el("line", {x1:CX,y1:18,x2:CX,y2:882, stroke:"#e2231a","stroke-width":1,"stroke-dasharray":"1,4",opacity:0.5}));
+    svg.appendChild(el("line", {x1:18,y1:CY,x2:882,y2:CY, stroke:"#1f6fd6","stroke-width":1,"stroke-dasharray":"1,4",opacity:0.5}));
+    svg.appendChild(el("rect", {x:20,y:20,width:840,height:842, fill:"none", stroke:"#cfd6dc","stroke-width":1,"stroke-dasharray":"1,4"}));
+
+    // グリッド本体
+    var gCells = el("g", {});
+    var gNumbers = el("g", {});
+    var hoverHighlight = el("polygon", {
+      points: "",
+      fill: "none",
+      stroke: HOVER_COLORS[hoverColorKey],
+      "stroke-width": 3,
+      "pointer-events": "none",
+      style: "display:none; filter:drop-shadow(0 0 5px " + HOVER_COLORS[hoverColorKey] + ");"
+    });
+    for (var col = 0; col < GRID_N; col++){
+      for (var row = 0; row < GRID_N; row++){
+        var key = col + "_" + row;
+        var spec = cellSpec(col, row);
+        var locked = spec.locked;
+        var colorKey = locked ? spec.forced : (Object.prototype.hasOwnProperty.call(state, key) ? state[key] : unpaintedColor(spec));
+        var cellClass = "cell" + (locked ? " locked" : "");
+        var poly = el("polygon", {
+          points: cellPolygon(col, row),
+          fill: COLORS[colorKey] || COLORS.lightgray,
+          stroke: "#aaaaaa",
+          "stroke-width": 1,
+          class: cellClass,
+          "data-key": key,
+          "data-locked": locked ? "1" : "0"
+        });
+        poly.addEventListener("mouseenter", function(ev){
+          hoverHighlight.setAttribute("points", ev.currentTarget.getAttribute("points"));
+          hoverHighlight.style.display = "";
+        });
+        poly.addEventListener("mouseleave", function(){
+          hoverHighlight.style.display = "none";
+        });
+        poly.addEventListener("click", function(ev){
+          if (ev.currentTarget.getAttribute("data-locked") === "1") return; // 太陽城・中央ラインはロック中
+          var k = ev.currentTarget.getAttribute("data-key");
+          var kp = k.split("_");
+          var kCol = parseInt(kp[0], 10), kRow = parseInt(kp[1], 10);
+          var cSpec = cellSpec(kCol, kRow);
+          var auto = autoZoneColor(kCol, kRow, cSpec);
+          if (auto){
+            // 自国陣地の無地エリア: 押すと自動でSTF/YDK/第3同盟色、同じ状態でもう一度押すとデフォルトに戻る
+            if (state[k] === auto) delete state[k];
+            else state[k] = auto;
+            saveState(state);
+            render();
+          }
+        });
+        gCells.appendChild(poly);
+
+        // 通し番号(中心の防衛リング・拠点は対象外、自国側のマスのみ表示)
+        var showNumber = !locked && !spec.ring0 && spec.side === toggles.ownSide && (!spec.onEWLine || toggles.allianceMode === "3");
+        if (showNumber){
+          var pts = cellPolygon(col, row).split(" ").map(function(s){
+            var xy = s.split(",");
+            return { x: parseFloat(xy[0]), y: parseFloat(xy[1]) };
+          });
+          var cxCell = (pts[0].x + pts[2].x) / 2;
+          var cyCell = (pts[0].y + pts[2].y) / 2;
+
+          var numText = el("text", {
+            x: cxCell, y: cyCell + numberFontSize * 0.35,
+            "text-anchor":"middle",
+            "font-size":numberFontSize,
+            fill:"#222222",
+            class:"cell-number"
+          });
+          numText.textContent = cellNumbers[key];
+          gNumbers.appendChild(numText);
+        }
+      }
+    }
+    svg.appendChild(gCells);
+    svg.appendChild(gNumbers);
+    svg.appendChild(hoverHighlight);
+
+    // 中心ラベル(太陽城5×5マスの中央)
+    var labelPos = toScreen(CORE_CENTER - HALF, CORE_CENTER - HALF);
+    var t = el("text", {
+      x: labelPos.x, y: labelPos.y + 6,
+      "text-anchor":"middle",
+      "font-size":22,
+      "font-weight":"bold",
+      fill:"#ffffff",
+      "font-family":"inherit"
+    });
+    t.textContent = "太陽城";
+    svg.appendChild(t);
+
+    // 陣地ラベル(空白コーナーに大きく表示: STF/YDK、3同盟体制なら第3同盟も自国側の先端付近に)
+    function zoneBadge(cx, cy, label, color, w, h){
+      var g = el("g", {});
+      g.appendChild(el("rect", {
+        x: cx - w/2, y: cy - h/2, width: w, height: h, rx: 10, ry: 10,
+        fill: color, opacity: 0.92
+      }));
+      var baseSize = h > 50 ? 20 : 16;
+      var fitSize = Math.floor((w - 12) / Math.max(1, String(label).length) * 1.7);
+      var fontSize = Math.max(9, Math.min(baseSize, fitSize));
+      var t2 = el("text", {
+        x: cx, y: cy + fontSize * 0.35,
+        "text-anchor":"middle",
+        "font-size": fontSize,
+        "font-weight":"bold",
+        fill:"#ffffff"
+      });
+      t2.textContent = label;
+      g.appendChild(t2);
+      return g;
+    }
+
+    var westSide = (toggles.ownSide === "west");
+    var stfIsNorth = (toggles.stfSide === "north");
+    var topCorner = { x: 150, y: 150 };
+    var bottomCorner = { x: 150, y: 790 };
+    if (!westSide){ topCorner.x = 750; bottomCorner.x = 750; }
+
+    var stfCorner = stfIsNorth ? topCorner : bottomCorner;
+    var ydkCorner = stfIsNorth ? bottomCorner : topCorner;
+
+    svg.appendChild(zoneBadge(stfCorner.x, stfCorner.y, "STF", COLORS.stf, 110, 54));
+    svg.appendChild(zoneBadge(ydkCorner.x, ydkCorner.y, "YDK", COLORS.ydk, 110, 54));
+
+    // タイトル・日付
+    var title = el("text", {x:26, y:38, "font-size":19, "font-weight":"600", fill:"#222222"});
+    title.textContent = meta.title;
+    svg.appendChild(title);
+
+    var dateText = el("text", {x:874, y:866, "text-anchor":"end", "font-size":16, fill:"#555555"});
+    dateText.textContent = meta.date;
+    svg.appendChild(dateText);
+
+    var footerLeft = el("text", {x:26, y:866, "font-size":16, fill:"#555555"});
+    footerLeft.textContent = "#2863";
+    svg.appendChild(footerLeft);
+
+    renderPlacementTables();
+  }
+
+  // ---- 同盟カラー設定UI ----
+  var stfColorInput = document.getElementById("stfColorInput");
+  var ydkColorInput = document.getElementById("ydkColorInput");
+  var thirdColorInput = document.getElementById("thirdColorInput");
+  stfColorInput.value = COLORS.stf;
+  ydkColorInput.value = COLORS.ydk;
+  thirdColorInput.value = COLORS.third;
+
+  function refreshDots(){
+    var stfDotEl = document.getElementById("stfDot");
+    var ydkDotEl = document.getElementById("ydkDot");
+    var thirdDotEl = document.getElementById("thirdDot");
+    if (stfDotEl) stfDotEl.style.background = COLORS.stf;
+    if (ydkDotEl) ydkDotEl.style.background = COLORS.ydk;
+    if (thirdDotEl) thirdDotEl.style.background = COLORS.third;
+  }
+
+  stfColorInput.addEventListener("input", function(){
+    COLORS.stf = stfColorInput.value;
+    saveAllianceColors();
+    refreshDots();
+    render();
+  });
+  ydkColorInput.addEventListener("input", function(){
+    COLORS.ydk = ydkColorInput.value;
+    saveAllianceColors();
+    refreshDots();
+    render();
+  });
+  thirdColorInput.addEventListener("input", function(){
+    COLORS.third = thirdColorInput.value;
+    saveAllianceColors();
+    refreshDots();
+    render();
+  });
+
+  var numberSizeInput = document.getElementById("numberSizeInput");
+  var numberSizeValue = document.getElementById("numberSizeValue");
+  numberSizeInput.value = numberFontSize;
+  numberSizeValue.textContent = numberFontSize;
+  numberSizeInput.addEventListener("input", function(){
+    numberFontSize = parseInt(numberSizeInput.value, 10);
+    numberSizeValue.textContent = numberFontSize;
+    saveNumberFontSize(numberFontSize);
+    render();
+  });
+
+  // ---- タイトル・日付入力欄(日付は毎月第4土曜日を先3回分から選択) ----
+  var titleInput = document.getElementById("titleInput");
+  var dateInput = document.getElementById("dateInput");
+  titleInput.value = meta.title;
+
+  function nthSaturday(year, monthIndex, n){
+    var d = new Date(year, monthIndex, 1);
+    var dow = d.getDay(); // 0=日,...,6=土
+    var firstSat = 1 + ((6 - dow + 7) % 7);
+    return new Date(year, monthIndex, firstSat + (n - 1) * 7);
+  }
+  function formatDate(d){
+    return d.getFullYear() + "/" + (d.getMonth() + 1) + "/" + d.getDate();
+  }
+  function nextFourthSaturdays(count){
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var results = [];
+    var y = today.getFullYear(), m = today.getMonth();
+    while (results.length < count){
+      var d = nthSaturday(y, m, 4);
+      if (d >= today) results.push(d);
+      m++;
+      if (m > 11){ m = 0; y++; }
+    }
+    return results;
+  }
+
+  var dateOptions = nextFourthSaturdays(3).map(formatDate);
+  dateInput.innerHTML = "";
+  dateOptions.forEach(function(dstr){
+    var opt = document.createElement("option");
+    opt.value = dstr;
+    opt.textContent = dstr;
+    dateInput.appendChild(opt);
+  });
+  if (dateOptions.indexOf(meta.date) === -1){
+    meta.date = dateOptions[0];
+    saveMeta(meta);
+  }
+  dateInput.value = meta.date;
+
+  titleInput.addEventListener("input", function(){
+    meta.title = titleInput.value;
+    saveMeta(meta);
+    render();
+  });
+  dateInput.addEventListener("change", function(){
+    meta.date = dateInput.value;
+    saveMeta(meta);
+    render();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if (!confirm("配置(色塗り・キャラ名)をすべてクリアします。よろしいですか？")) return;
+    state = {};
+    saveState(state);
+    names = {};
+    saveNames(names);
+    render();
+  });
+
+  // ---- 自国陣地・STFの位置・同盟体制 トグル ----
+  function renderToggles(){
+    var ownButtons = document.querySelectorAll("#ownSideToggle button");
+    ownButtons.forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-value") === toggles.ownSide);
+    });
+    var stfButtons = document.querySelectorAll("#stfSideToggle button");
+    stfButtons.forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-value") === toggles.stfSide);
+    });
+    var allianceButtons = document.querySelectorAll("#allianceModeToggle button");
+    allianceButtons.forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-value") === toggles.allianceMode);
+    });
+    document.getElementById("thirdNameInput").style.display = (toggles.allianceMode === "3") ? "" : "none";
+    document.getElementById("thirdColorGroup").style.display = (toggles.allianceMode === "3") ? "" : "none";
+    var hoverColorButtons = document.querySelectorAll("#hoverColorToggle button");
+    hoverColorButtons.forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-value") === hoverColorKey);
+    });
+  }
+  document.querySelectorAll("#ownSideToggle button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      toggles.ownSide = btn.getAttribute("data-value");
+      saveToggles(toggles);
+      recomputeNumbering();
+      renderToggles();
+      render();
+    });
+  });
+  document.querySelectorAll("#stfSideToggle button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      toggles.stfSide = btn.getAttribute("data-value");
+      saveToggles(toggles);
+      recomputeNumbering();
+      renderToggles();
+      render();
+    });
+  });
+  document.querySelectorAll("#allianceModeToggle button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      toggles.allianceMode = btn.getAttribute("data-value");
+      saveToggles(toggles);
+      recomputeNumbering();
+      renderToggles();
+      render();
+    });
+  });
+  document.querySelectorAll("#hoverColorToggle button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      hoverColorKey = btn.getAttribute("data-value");
+      saveHoverColorKey(hoverColorKey);
+      renderToggles();
+      render();
+      document.getElementById("hoverColorPopup").style.display = "none";
+    });
+  });
+
+  var hoverColorLink = document.getElementById("hoverColorLink");
+  var hoverColorPopup = document.getElementById("hoverColorPopup");
+  hoverColorLink.addEventListener("click", function(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+    hoverColorPopup.style.display = (hoverColorPopup.style.display === "none") ? "block" : "none";
+  });
+  document.addEventListener("click", function(ev){
+    if (hoverColorPopup.style.display === "block" &&
+        !hoverColorPopup.contains(ev.target) && ev.target !== hoverColorLink){
+      hoverColorPopup.style.display = "none";
+    }
+  });
+
+  var thirdNameInput = document.getElementById("thirdNameInput");
+  thirdNameInput.value = allianceName;
+  thirdNameInput.addEventListener("input", function(){
+    allianceName = thirdNameInput.value;
+    saveAllianceName(allianceName);
+    render();
+  });
+
+  // ---- キャラ名の保存(番号マスごと) ----
+  var NAMES_KEY = "castle_redzone_map_names_v1";
+  function loadNames(){
+    try{
+      var raw = localStorage.getItem(NAMES_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    }catch(e){ console.error("names load failed", e); }
+    return {};
+  }
+  function saveNames(n){
+    try{ localStorage.setItem(NAMES_KEY, JSON.stringify(n)); }catch(e){ console.error("names save failed", e); }
+  }
+  var names = loadNames();
+
+  // ---- 配置一覧テーブル ----
+  document.getElementById("stfDot").style.background = COLORS.stf;
+  document.getElementById("ydkDot").style.background = COLORS.ydk;
+  document.getElementById("thirdDot").style.background = COLORS.third;
+
+  function buildTable(rows){
+    if (!rows.length){
+      var p = document.createElement("div");
+      p.className = "empty-note";
+      p.textContent = "配置なし";
+      return p;
+    }
+    rows.sort(function(x, y){ return x.number - y.number; });
+    var table = document.createElement("table");
+    table.className = "placement-table";
+    var thead = document.createElement("tr");
+    ["№","キャラ名"].forEach(function(h){
+      var th = document.createElement("th");
+      th.textContent = h;
+      thead.appendChild(th);
+    });
+    table.appendChild(thead);
+    rows.forEach(function(r){
+      var tr = document.createElement("tr");
+      var tdN = document.createElement("td");
+      tdN.textContent = "#" + r.number;
+      var tdName = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "キャラ名を入力";
+      input.value = names[r.key] || "";
+      input.style.cssText = "width:100%;padding:4px 6px;border:1px solid var(--panel-border);border-radius:4px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;";
+      input.addEventListener("input", function(){
+        names[r.key] = input.value;
+        saveNames(names);
+      });
+      tdName.appendChild(input);
+      tr.appendChild(tdN);
+      tr.appendChild(tdName);
+      table.appendChild(tr);
+    });
+    return table;
+  }
+
+  function computePlacementRows(){
+    var stfRows = [], ydkRows = [], thirdRows = [];
+    Object.keys(state).forEach(function(key){
+      var parts = key.split("_");
+      var col = parseInt(parts[0], 10), row = parseInt(parts[1], 10);
+      var spec = cellSpec(col, row);
+      if (spec.locked || spec.ring0) return; // ロック済み・防衛リング/拠点マスは配置対象外
+      var row2 = { number: cellNumbers[key], key: key, name: names[key] || "" };
+      var zone = zoneLabel(col, row, spec);
+      if (zone === "stf") stfRows.push(row2);
+      else if (zone === "ydk") ydkRows.push(row2);
+      else if (zone === "third") thirdRows.push(row2);
+    });
+    stfRows.sort(function(x,y){ return x.number - y.number; });
+    ydkRows.sort(function(x,y){ return x.number - y.number; });
+    thirdRows.sort(function(x,y){ return x.number - y.number; });
+    return { stf: stfRows, ydk: ydkRows, third: thirdRows };
+  }
+
+  function renderPlacementTables(){
+    var rows = computePlacementRows();
+
+    var stfHolder = document.getElementById("stfTableHolder");
+    var ydkHolder = document.getElementById("ydkTableHolder");
+    stfHolder.innerHTML = ""; stfHolder.appendChild(buildTable(rows.stf));
+    ydkHolder.innerHTML = ""; ydkHolder.appendChild(buildTable(rows.ydk));
+
+    var thirdCard = document.getElementById("thirdAllianceCard");
+    var thirdTitle = document.getElementById("thirdAllianceTitle");
+    if (toggles.allianceMode === "3"){
+      thirdCard.style.display = "";
+      thirdTitle.textContent = (allianceName || "第3同盟") + " 配置一覧";
+      var thirdHolder = document.getElementById("thirdTableHolder");
+      thirdHolder.innerHTML = ""; thirdHolder.appendChild(buildTable(rows.third));
+    } else {
+      thirdCard.style.display = "none";
+    }
+  }
+
+
+  function downloadSvgString(src, filename){
+    var blob = new Blob([src], {type:"image/svg+xml"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("downloadBtn").addEventListener("click", function(){
+    try{
+      var serializer = new XMLSerializer();
+      var src = serializer.serializeToString(svg);
+      var safeSvgTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
+      downloadSvgString(src, safeSvgTitle + ".svg");
+    }catch(e){
+      console.error("download failed", e);
+    }
+  });
+
+  document.getElementById("tableDownloadBtn").addEventListener("click", function(){
+    try{
+      var pageW = 900;
+      var marginX = 40, topPad = 46, headerH = 26, lineH = 22, bottomPad = 30;
+      var jpFont = '"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif';
+
+      var rowsData = computePlacementRows();
+      var sections = [
+        { title: "STF 配置一覧", rows: rowsData.stf }
+      ];
+      sections.push({ title: "YDK 配置一覧", rows: rowsData.ydk });
+      if (toggles.allianceMode === "3"){
+        sections.push({ title: (allianceName || "第3同盟") + " 配置一覧", rows: rowsData.third });
+      }
+      var maxRows = 0;
+      sections.forEach(function(s){ maxRows = Math.max(maxRows, s.rows.length || 1); });
+      var tableH = topPad + headerH + maxRows * lineH + bottomPad;
+
+      var exportSvg = document.createElementNS(svgns, "svg");
+      exportSvg.setAttribute("viewBox", "0 0 " + pageW + " " + tableH);
+      exportSvg.setAttribute("xmlns", svgns);
+
+      var bgRect = document.createElementNS(svgns, "rect");
+      bgRect.setAttribute("x", 0); bgRect.setAttribute("y", 0);
+      bgRect.setAttribute("width", pageW); bgRect.setAttribute("height", tableH);
+      bgRect.setAttribute("fill", "#ffffff");
+      exportSvg.appendChild(bgRect);
+
+      var titleEl = document.createElementNS(svgns, "text");
+      titleEl.setAttribute("x", marginX); titleEl.setAttribute("y", topPad - 18);
+      titleEl.setAttribute("font-size", 18);
+      titleEl.setAttribute("font-weight", "bold");
+      titleEl.setAttribute("font-family", jpFont);
+      titleEl.setAttribute("fill", "#141414");
+      titleEl.textContent = (meta.title || "") + " - 配置一覧";
+      exportSvg.appendChild(titleEl);
+
+      var colGap = 20;
+      var colWidth = (pageW - marginX * 2 - colGap * (sections.length - 1)) / sections.length;
+      sections.forEach(function(section, ci){
+        var x = marginX + ci * (colWidth + colGap);
+        var y = topPad;
+
+        var head = document.createElementNS(svgns, "text");
+        head.setAttribute("x", x); head.setAttribute("y", y);
+        head.setAttribute("font-size", 15);
+        head.setAttribute("font-weight", "bold");
+        head.setAttribute("font-family", jpFont);
+        head.setAttribute("fill", "#141414");
+        head.textContent = section.title;
+        exportSvg.appendChild(head);
+        y += headerH;
+
+        if (!section.rows.length){
+          var empty = document.createElementNS(svgns, "text");
+          empty.setAttribute("x", x + 4); empty.setAttribute("y", y);
+          empty.setAttribute("font-size", 13);
+          empty.setAttribute("font-family", jpFont);
+          empty.setAttribute("fill", "#787878");
+          empty.textContent = "配置なし";
+          exportSvg.appendChild(empty);
+        } else {
+          section.rows.forEach(function(r){
+            var numEl = document.createElementNS(svgns, "text");
+            numEl.setAttribute("x", x); numEl.setAttribute("y", y);
+            numEl.setAttribute("font-size", 13);
+            numEl.setAttribute("font-family", jpFont);
+            numEl.setAttribute("fill", "#141414");
+            numEl.textContent = "#" + r.number;
+            exportSvg.appendChild(numEl);
+
+            var nameEl = document.createElementNS(svgns, "text");
+            nameEl.setAttribute("x", x + 54); nameEl.setAttribute("y", y);
+            nameEl.setAttribute("font-size", 13);
+            nameEl.setAttribute("font-family", jpFont);
+            nameEl.setAttribute("fill", "#141414");
+            nameEl.textContent = r.name || "-";
+            exportSvg.appendChild(nameEl);
+
+            y += lineH;
+          });
+        }
+      });
+
+      var serializer2 = new XMLSerializer();
+      var src2 = serializer2.serializeToString(exportSvg);
+      var safeTableTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
+      downloadSvgString(src2, safeTableTitle + "_table.svg");
+    }catch(e){
+      console.error("table download failed", e);
+    }
+  });
+
+  document.getElementById("pdfBtn").addEventListener("click", function(){
+    var pdfBtn = document.getElementById("pdfBtn");
+    var originalLabel = pdfBtn.textContent;
+    pdfBtn.textContent = "生成中...";
+    pdfBtn.disabled = true;
+
+    try{
+      var serializer = new XMLSerializer();
+      var src = serializer.serializeToString(svg);
+      var svgBlob = new Blob([src], {type:"image/svg+xml;charset=utf-8"});
+      var svgUrl = URL.createObjectURL(svgBlob);
+
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var scale = 2; // 高解像度で出力
+          var canvas = document.createElement("canvas");
+          canvas.width = 900 * scale;
+          canvas.height = 900 * scale;
+          var ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(svgUrl);
+
+          var pngDataUrl = canvas.toDataURL("image/png");
+
+          if (!window.jspdf || !window.jspdf.jsPDF){
+            throw new Error("jsPDF not loaded");
+          }
+          var JsPdf = window.jspdf.jsPDF;
+          var pdf = new JsPdf({
+            orientation: "portrait",
+            unit: "px",
+            format: [900, 900]
+          });
+          pdf.addImage(pngDataUrl, "PNG", 0, 0, 900, 900);
+
+          // ---- テーブル(STF/YDK/第3同盟)を横並び(最大3列)でページに追加(日本語文字化け対策でCanvas経由の画像として埋め込む) ----
+          var rows = computePlacementRows();
+          var sections = [
+            { title: "STF 配置一覧", rows: rows.stf }
+          ];
+          sections.push({ title: "YDK 配置一覧", rows: rows.ydk });
+          if (toggles.allianceMode === "3"){
+            sections.push({ title: (allianceName || "第3同盟") + " 配置一覧", rows: rows.third });
+          }
+
+          var pageW = 900, pageH = 900;
+          var marginX = 40, marginTop = 60, marginBottom = 40, lineH = 24;
+          var jpFont = '"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif';
+          var colGap = 20;
+          var colWidth = (pageW - marginX * 2 - colGap * (sections.length - 1)) / sections.length;
+          var tablePage = null; // { canvas, ctx }
+
+          function flushTablePage(){
+            if (tablePage){
+              var dataUrl = tablePage.canvas.toDataURL("image/png");
+              pdf.addImage(dataUrl, "PNG", 0, 0, pageW, pageH);
+            }
+          }
+
+          function newTablePage(){
+            flushTablePage();
+            pdf.addPage([pageW, pageH]);
+
+            var canvas = document.createElement("canvas");
+            canvas.width = pageW * scale;
+            canvas.height = pageH * scale;
+            var tctx = canvas.getContext("2d");
+            tctx.fillStyle = "#ffffff";
+            tctx.fillRect(0, 0, canvas.width, canvas.height);
+            tctx.scale(scale, scale);
+            tablePage = { canvas: canvas, ctx: tctx };
+
+            tctx.fillStyle = "#141414";
+            tctx.font = "bold 18px " + jpFont;
+            tctx.fillText((meta.title || "") + " - 配置一覧", marginX, marginTop - 24);
+          }
+
+          // 各列(同盟)の現在の描画Y座標と、まだ描いていない行のインデックスを列ごとに管理
+          var colY = sections.map(function(){ return marginTop; });
+          var rowIdx = sections.map(function(){ return 0; });
+
+          function drawColumnHeader(colIdx){
+            var x = marginX + colIdx * (colWidth + colGap);
+            var ctx2 = tablePage.ctx;
+            ctx2.fillStyle = "#141414";
+            ctx2.font = "bold 15px " + jpFont;
+            ctx2.fillText(sections[colIdx].title, x, colY[colIdx]);
+            colY[colIdx] += lineH * 1.3;
+            ctx2.font = "13px " + jpFont;
+            if (!sections[colIdx].rows.length){
+              ctx2.fillStyle = "#787878";
+              ctx2.fillText("配置なし", x + 6, colY[colIdx]);
+              colY[colIdx] += lineH;
+            }
+          }
+
+          newTablePage();
+          sections.forEach(function(_, colIdx){ drawColumnHeader(colIdx); });
+
+          // 列ごとに独立して行を進め、いずれかの列が下端に達したら全列そろえて改ページする
+          var anyRemaining = true;
+          while (anyRemaining){
+            anyRemaining = false;
+            for (var ci = 0; ci < sections.length; ci++){
+              var x = marginX + ci * (colWidth + colGap);
+              var secRows = sections[ci].rows;
+              while (rowIdx[ci] < secRows.length && colY[ci] <= pageH - marginBottom){
+                var r = secRows[rowIdx[ci]];
+                var ctx3 = tablePage.ctx;
+                ctx3.font = "13px " + jpFont;
+                ctx3.fillStyle = "#141414";
+                ctx3.fillText("#" + r.number, x, colY[ci]);
+                ctx3.fillText(r.name || "-", x + 60, colY[ci]);
+                colY[ci] += lineH;
+                rowIdx[ci]++;
+              }
+              if (rowIdx[ci] < secRows.length) anyRemaining = true;
+            }
+            if (anyRemaining){
+              newTablePage();
+              colY = sections.map(function(){ return marginTop; });
+              sections.forEach(function(_, colIdx){
+                var x2 = marginX + colIdx * (colWidth + colGap);
+                var ctx4 = tablePage.ctx;
+                ctx4.fillStyle = "#141414";
+                ctx4.font = "bold 15px " + jpFont;
+                ctx4.fillText(sections[colIdx].title + "(つづき)", x2, colY[colIdx]);
+                colY[colIdx] += lineH * 1.3;
+              });
+            }
+          }
+          flushTablePage();
+
+          var safeTitle = (meta.title || "castle_map").replace(/[\\/:*?"<>|]/g, "_");
+          pdf.save(safeTitle + ".pdf");
+        }catch(err){
+          console.error("pdf build failed", err);
+          alert("PDFの生成に失敗しました。時間をおいて再度お試しください。");
+        }finally{
+          pdfBtn.textContent = originalLabel;
+          pdfBtn.disabled = false;
+        }
+      };
+      img.onerror = function(){
+        console.error("svg image load failed");
+        alert("PDFの生成に失敗しました。");
+        pdfBtn.textContent = originalLabel;
+        pdfBtn.disabled = false;
+        URL.revokeObjectURL(svgUrl);
+      };
+      img.src = svgUrl;
+    }catch(e){
+      console.error("pdf export failed", e);
+      alert("PDFの生成に失敗しました。");
+      pdfBtn.textContent = originalLabel;
+      pdfBtn.disabled = false;
+    }
+  });
+
+  // ---- チーム共有(db capability): 同じアーティファクトを開いた組織内メンバー間で配置を共有 ----
+  var sharedDbRef = null;
+
+  function syncInputsFromState(){
+    titleInput.value = meta.title;
+    if (dateOptions.indexOf(meta.date) === -1){ meta.date = dateOptions[0]; }
+    dateInput.value = meta.date;
+    thirdNameInput.value = allianceName;
+    stfColorInput.value = COLORS.stf;
+    ydkColorInput.value = COLORS.ydk;
+    thirdColorInput.value = COLORS.third;
+  }
+
+  function applySharedData(data){
+    if (data.state && typeof data.state === "object"){ state = data.state; saveState(state); }
+    if (data.names && typeof data.names === "object"){ names = data.names; saveNames(names); }
+    if (data.meta && typeof data.meta === "object"){ meta = data.meta; saveMeta(meta); }
+    if (data.toggles && typeof data.toggles === "object"){ toggles = data.toggles; saveToggles(toggles); }
+    if (data.colors && typeof data.colors === "object"){
+      if (data.colors.stf) COLORS.stf = data.colors.stf;
+      if (data.colors.ydk) COLORS.ydk = data.colors.ydk;
+      if (data.colors.third) COLORS.third = data.colors.third;
+      saveAllianceColors();
+    }
+    if (typeof data.allianceName === "string"){ allianceName = data.allianceName; saveAllianceName(allianceName); }
+    recomputeNumbering();
+    syncInputsFromState();
+    renderToggles();
+    render();
+  }
+
+  function setShareStatus(text, enabled){
+    document.getElementById("shareStatus").textContent = text;
+    document.getElementById("shareBtn").disabled = !enabled;
+  }
+
+  // ---- 名前を付けて保存(この端末のブラウザに複数パターンを保存・呼び出し) ----
+  var SAVED_MAPS_KEY = "castle_redzone_map_saved_maps_v1";
+  function loadSavedMaps(){
+    try{
+      var raw = localStorage.getItem(SAVED_MAPS_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    }catch(e){ console.error("saved maps load failed", e); }
+    return {};
+  }
+  function saveSavedMaps(m){
+    try{ localStorage.setItem(SAVED_MAPS_KEY, JSON.stringify(m)); }catch(e){ console.error("saved maps save failed", e); }
+  }
+  function collectCurrentPayload(){
+    return {
+      state: state,
+      names: names,
+      meta: meta,
+      toggles: toggles,
+      colors: { stf: COLORS.stf, ydk: COLORS.ydk, third: COLORS.third },
+      allianceName: allianceName,
+      savedAt: new Date().toISOString()
+    };
+  }
+
+  var savedMaps = loadSavedMaps();
+  var savedListSelect = document.getElementById("savedListSelect");
+
+  function refreshSavedList(){
+    var names2 = Object.keys(savedMaps).sort();
+    savedListSelect.innerHTML = "";
+    if (!names2.length){
+      var opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "(保存なし)";
+      savedListSelect.appendChild(opt0);
+      return;
+    }
+    names2.forEach(function(n){
+      var opt = document.createElement("option");
+      opt.value = n;
+      opt.textContent = n;
+      savedListSelect.appendChild(opt);
+    });
+  }
+  refreshSavedList();
+
+  document.getElementById("saveNamedBtn").addEventListener("click", function(){
+    var nameInput = document.getElementById("saveNameInput");
+    var saveName = nameInput.value.trim();
+    if (!saveName){
+      alert("保存名を入力してください。");
+      return;
+    }
+    if (savedMaps[saveName] && !confirm("「" + saveName + "」は既に存在します。上書きしますか？")) return;
+    savedMaps[saveName] = collectCurrentPayload();
+    saveSavedMaps(savedMaps);
+    refreshSavedList();
+    savedListSelect.value = saveName;
+    nameInput.value = "";
+    alert("「" + saveName + "」として保存しました。");
+  });
+
+  document.getElementById("loadNamedBtn").addEventListener("click", function(){
+    var saveName = savedListSelect.value;
+    if (!saveName || !savedMaps[saveName]){
+      alert("読み込む保存を選択してください。");
+      return;
+    }
+    applySharedData(savedMaps[saveName]);
+    alert("「" + saveName + "」を読み込みました。");
+  });
+
+  document.getElementById("deleteNamedBtn").addEventListener("click", function(){
+    var saveName = savedListSelect.value;
+    if (!saveName || !savedMaps[saveName]){
+      alert("削除する保存を選択してください。");
+      return;
+    }
+    if (!confirm("「" + saveName + "」を削除します。よろしいですか？")) return;
+    delete savedMaps[saveName];
+    saveSavedMaps(savedMaps);
+    refreshSavedList();
+  });
+
+  document.getElementById("shareBtn").addEventListener("click", function(){
+    if (!sharedDbRef){
+      alert("共有機能が利用できません(組織内アカウントでこのリンクを開いている場合のみ使えます)。");
+      return;
+    }
+    var shareBtn = document.getElementById("shareBtn");
+    var original = shareBtn.textContent;
+    shareBtn.textContent = "共有中...";
+    shareBtn.disabled = true;
+    sharedDbRef.set({
+      state: state,
+      names: names,
+      meta: meta,
+      toggles: toggles,
+      colors: { stf: COLORS.stf, ydk: COLORS.ydk, third: COLORS.third },
+      allianceName: allianceName
+    }).then(function(){
+      setShareStatus("共有済み(このリンクを開いた人に反映されます)", true);
+    }).catch(function(err){
+      console.error("share save failed", err);
+      alert("共有への保存に失敗できませんでした。閲覧のみの権限の可能性があります。");
+      setShareStatus("共有: 保存に失敗しました", true);
+    }).finally(function(){
+      shareBtn.textContent = original;
+      shareBtn.disabled = false;
+    });
+  });
+
+  var SHARE_FEATURE_ENABLED = false; // 共有ボタンは一時的に非表示・無効化中
+
+  (function initSharedDb(){
+    if (!SHARE_FEATURE_ENABLED) return;
+    if (typeof claude === "undefined" || !claude || typeof claude.use !== "function"){
+      setShareStatus("共有機能: 利用不可(この環境では使えません)", false);
+      return;
+    }
+    claude.use("db").then(function(dbNs){
+      if (!dbNs){
+        setShareStatus("共有機能: 利用不可(組織内アカウントでのみ使えます)", false);
+        return;
+      }
+      sharedDbRef = dbNs.doc("shared/map");
+      sharedDbRef.onSnapshot(function(snap){
+        if (snap.exists){
+          applySharedData(snap.data());
+        }
+        setShareStatus("共有: 有効(他の人の保存が自動反映されます)", true);
+      }, function(err){
+        console.error("db subscribe error", err);
+        setShareStatus("共有機能: エラーが発生しました", false);
+      });
+    }).catch(function(e){
+      console.error("db init failed", e);
+      setShareStatus("共有機能: 利用不可", false);
+    });
+  })();
+
+  renderToggles();
+  render();
+})();
+</script>
+</body>
+</html>
