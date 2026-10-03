@@ -95,6 +95,7 @@
   #labelSizeInput{width:120px;accent-color:#2d7ff9;}
   #labelSizeOutput{min-width:4em;color:var(--text-sub);font-size:12px;text-align:right;}
   .zoom-readout{padding-left:12px;border-left:1px solid var(--panel-border);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .coord-readout{position:fixed;right:18px;bottom:18px;z-index:20;display:none;pointer-events:none;padding:8px 10px;border-radius:999px;background:rgba(17,17,17,0.78);color:#fff;font-size:12px;font-weight:600;letter-spacing:0.04em;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
   .map-tools{gap:6px;}
   .map-actions{display:flex;gap:6px;flex:0 0 auto;}
   .map-actions button{padding:7px 10px;white-space:nowrap;}
@@ -466,6 +467,7 @@
 <div class="map-wrap">
   <svg id="mapSvg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
+<div class="coord-readout" id="coordReadout" role="status" aria-live="polite"></div>
 
 <div class="city-dialog" id="cityNameDialog" hidden>
   <form id="cityNameForm">
@@ -787,6 +789,8 @@
   var VIEW_W, VIEW_H, HW, HH, CX, CY, HALF;
   var CORE_HALF = (CORE_MAX - CORE_MIN + 1) / 2; // 4マス幅の半分 = 2
   var CORE_CENTER = (CORE_MIN + CORE_MAX) / 2;    // 太陽城の中心座標 = 6.5
+  var COORD_ORIGIN_CELL = { col: 10, row: -13 };
+  var COORD_ORIGIN_POINT = { x: 659, y: 389 };
 
   function updateGridMetrics(){
     mapCols = clampMapSize(mapCols, 40, 10, 80);
@@ -1340,6 +1344,7 @@
   var svgns = "http://www.w3.org/2000/svg";
   var svg = document.getElementById("mapSvg");
   var mapWrap = document.querySelector(".map-wrap");
+  var coordReadout = document.getElementById("coordReadout");
   var gridLayer = null;
   var dragState = null;
   var objectDragState = null;
@@ -1457,6 +1462,15 @@
       y: (clientY - bounds.top) * VIEW_H / bounds.height
     };
   }
+  function getCoordFromKey(cellKey){
+    var parts = cellKey.split("_");
+    var cellCol = parseInt(parts[0], 10);
+    var cellRow = parseInt(parts[1], 10);
+    return {
+      x: COORD_ORIGIN_POINT.x - (cellRow - COORD_ORIGIN_CELL.row),
+      y: COORD_ORIGIN_POINT.y - (cellCol - COORD_ORIGIN_CELL.col)
+    };
+  }
   function cellKeyAtClientPoint(clientX, clientY){
     var point = clientToSvg(clientX, clientY);
     var worldX = (point.x - panX) / zoom;
@@ -1465,6 +1479,14 @@
     var dy = (worldY - CY) / HH;
     return Math.round((dx + dy) / 2) + "_" + Math.round((dy - dx) / 2);
   }
+  svg.addEventListener("pointermove", function(event){
+    var coord = getCoordFromKey(cellKeyAtClientPoint(event.clientX, event.clientY));
+    coordReadout.textContent = "x:" + coord.x + " y:" + coord.y;
+    coordReadout.style.display = "block";
+  });
+  svg.addEventListener("pointerleave", function(){
+    coordReadout.style.display = "none";
+  });
   function startObjectDrag(event, placement, objectLayer){
     if (!editMode) return;
     if (event.button !== 0 || event.ctrlKey || event.pointerType === "touch") return;
