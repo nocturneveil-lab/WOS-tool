@@ -311,6 +311,8 @@
   labelScale = loadLabelScale();
   var panX = 0, panY = 0;
   var zoom = 2.5;
+  // 表示上の100%にあたる実ズーム。公開用の初期配置を読み込んだときのズームを基準にする。
+  var zoomBase = 2.5;
   var mapHeight;
   var VIEW_W, VIEW_H, HW, HH, CX, CY;
   var COORD_ORIGIN_CELL = { col: 10, row: -13 };
@@ -453,20 +455,20 @@
     zoom = previous.zoom;
     updateGridMetrics();
     markLayoutChanged();
-    document.getElementById("zoomValue").textContent = Math.round(zoom * 100) + "%";
+    updateZoomReadout();
     updateUndoButton();
     render();
   }
   undoButton.addEventListener("click", undoMapAction);
   document.getElementById("resetMapAction").addEventListener("click", function(){
-    if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * 2.5) && panY === (VIEW_H / 2 - CY * 2.5) && zoom === 2.5) return;
+    if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * zoomBase) && panY === (VIEW_H / 2 - CY * zoomBase) && zoom === zoomBase) return;
     rememberMapState();
     placements = [];
     classifications = {};
-    zoom = 2.5;
+    zoom = zoomBase;
     centerMapView();
     markLayoutChanged();
-    document.getElementById("zoomValue").textContent = "250%";
+    updateZoomReadout();
     render();
   });
   var layoutFileInput = document.getElementById("layoutFileInput");
@@ -551,7 +553,7 @@
       });
     }
     var view = imported.view && typeof imported.view === "object" ? imported.view : {};
-    var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : 2.5;
+    var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : zoomBase;
     var nextPanX = Number.isFinite(view.panX) ? view.panX : (VIEW_W / 2 - CX * nextZoom);
     var nextPanY = Number.isFinite(view.panY) ? view.panY : (VIEW_H / 2 - CY * nextZoom);
     var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
@@ -567,7 +569,7 @@
     mapRows = nextMapRows;
     mapColsInput.value = String(mapCols);
     mapRowsInput.value = String(mapRows);
-    zoomValue.textContent = Math.round(zoom * 100) + "%";
+    updateZoomReadout();
     updateGridMetrics();
     hasUnsavedChanges = false;
     saveMapRange();
@@ -687,6 +689,9 @@
   var mapRowsInput = document.getElementById("mapRowsInput");
   var editModeToggle = document.getElementById("editModeToggle");
   var zoomValue = document.getElementById("zoomValue");
+  function updateZoomReadout(){
+    zoomValue.textContent = Math.round(zoom / zoomBase * 100) + "%";
+  }
   var objectColorDialog = document.getElementById("objectColorDialog");
   var objectColorForm = document.getElementById("objectColorForm");
   var objectColorInputs = Array.from(objectColorForm.querySelectorAll("[data-object-color]"));
@@ -830,7 +835,7 @@
     var worldX = (pointX - panX) / zoom;
     var worldY = (pointY - panY) / zoom;
     zoom = nextZoom;
-    zoomValue.textContent = Math.round(zoom * 100) + "%";
+    updateZoomReadout();
     panX = pointX - worldX * zoom;
     panY = pointY - worldY * zoom;
     render();
@@ -905,7 +910,7 @@
       var pinchDistance = Math.sqrt(pinchDx * pinchDx + pinchDy * pinchDy);
       var pinchCenter = clientToSvg((pinchPointers[0].x + pinchPointers[1].x) / 2, (pinchPointers[0].y + pinchPointers[1].y) / 2);
       zoom = Math.max(0.25, Math.min(4, pinchState.zoom * pinchDistance / pinchState.distance));
-      zoomValue.textContent = Math.round(zoom * 100) + "%";
+      updateZoomReadout();
       panX = pinchCenter.x - pinchState.worldX * zoom;
       panY = pinchCenter.y - pinchState.worldY * zoom;
       render();
@@ -1200,6 +1205,8 @@
       })
       .then(function(layout){
         applyLayout(layout);
+        zoomBase = zoom;
+        updateZoomReadout();
         undoStack = [];
         updateUndoButton();
         layoutFileStatus.textContent = "公開用の配置を読み込みました";
