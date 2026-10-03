@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Castle War Deployment Map</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Castle War Deployment Map — Editor</h1>
+
+<div class="toolbar" style="max-width:880px;width:100%;margin-bottom:16px;">
+  <div class="toolbar-row">
+    <label style="font-size:13px;display:flex;flex-direction:column;gap:4px;flex:1 1 260px;">
+      タイトル
+      <input id="titleInput" type="text" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;">
+    </label>
+    <label style="font-size:13px;display:flex;flex-direction:column;gap:4px;flex:0 1 220px;">
+      日付
+      <select id="dateInput" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;"></select>
+    </label>
+  </div>
+  <div class="toolbar-row" style="margin-top:12px; align-items:flex-end; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
+    <div class="toggle-group" style="flex:0 0 auto;">
+      <div class="toggle-group-label">陣地</div>
+      <div class="toggle-switch" id="ownSideToggle">
+        <button data-value="east">東</button>
+        <button data-value="west">西</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="flex:0 0 auto; margin-left:28px;">
+      <div class="toggle-group-label">STF</div>
+      <div class="toggle-switch" id="stfSideToggle">
+        <button data-value="north">北</button>
+        <button data-value="south">南</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="flex:0 0 auto; margin-left:28px;">
+      <div class="toggle-group-label">同盟体制</div>
+      <div class="toggle-switch" id="allianceModeToggle" style="flex-wrap:nowrap;">
+        <button id="allianceMode2Btn" data-value="2">2同盟</button>
+        <button id="allianceMode3Btn" data-value="3">3同盟</button>
+        <input id="thirdNameInput" type="text" placeholder="第3同盟" title="第3同盟の名称(北=STF/中央=第3同盟/南=YDK)" style="margin-left:10px;padding:10px 12px;border:1.5px solid var(--panel-border);border-radius:10px;background:var(--panel-bg);color:var(--text);font-family:inherit;font-size:14px;width:150px;flex:0 0 auto;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="map-wrap">
+  <svg id="mapSvg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-row" id="allianceColors" style="align-items:center;">
+    <div class="toggle-group">
+      <div class="toggle-group-label">STF</div>
+      <input id="stfColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group">
+      <div class="toggle-group-label">YDK</div>
+      <input id="ydkColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group" id="thirdColorGroup">
+      <div class="toggle-group-label">第3同盟</div>
+      <input id="thirdColorInput" type="color" class="color-swatch-input">
+    </div>
+    <div class="toggle-group" style="margin-left:20px;">
+      <div class="toggle-group-label">番号サイズ</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input id="numberSizeInput" type="range" min="6" max="24" step="1" style="width:100px;">
+        <span id="numberSizeValue" style="font-size:12px;color:var(--text-sub);min-width:18px;">16</span>
+      </div>
+    </div>
+    <div class="btns" style="margin-left:20px;">
+      <span style="position:relative; display:inline-block;">
+        <button id="hoverColorLink" type="button">ホバー色設定</button>
+        <div id="hoverColorPopup" style="display:none; position:absolute; bottom:100%; left:0; margin-bottom:8px; background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:10px; padding:10px; box-shadow:0 4px 16px rgba(0,0,0,0.18); z-index:20;">
+          <div class="toggle-switch toggle-switch-sm" id="hoverColorToggle" style="flex-wrap:nowrap; width:320px;">
+            <button data-value="pink" style="flex:1; background:#ff2fd6; color:#ffffff; border-color:#ff2fd6;">ピンク</button>
+            <button data-value="lime" style="flex:1; background:#c6ff1a; color:#1a1a1a; border-color:#c6ff1a;">ライム</button>
+            <button data-value="purple" style="flex:1; background:#a742ff; color:#ffffff; border-color:#a742ff;">パープル</button>
+            <button data-value="orange" style="flex:1; background:#ff7a00; color:#ffffff; border-color:#ff7a00;">オレンジ</button>
+          </div>
+        </div>
+      </span>
+      <button id="resetBtn">配置をクリア</button>
+      <button id="downloadBtn">MAPを保存</button>
+      <button id="tableDownloadBtn">テーブルを保存</button>
+      <button id="pdfBtn">PDFとして保存</button>
+      <button id="shareBtn" disabled style="display:none;">チームに共有</button>
+      <span id="shareStatus" style="font-size:12px;color:var(--text-sub);align-self:center;display:none;">共有機能を確認中...</span>
+    </div>
+  </div>
+  <div class="toolbar-row" style="margin-top:10px; align-items:center;">
+    <div class="toggle-group">
+      <div class="toggle-group-label">名前を付けて保存</div>
+      <div style="display:flex; gap:8px;">
+        <input id="saveNameInput" type="text" placeholder="保存名を入力" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;width:160px;">
+        <button id="saveNamedBtn" type="button">保存</button>
+      </div>
+    </div>
+    <div class="toggle-group" style="margin-left:20px;">
+      <div class="toggle-group-label">保存した配置を呼び出す</div>
+      <div style="display:flex; gap:8px;">
+        <select id="savedListSelect" style="padding:7px 9px;border:1px solid var(--panel-border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;min-width:160px;">
+          <option value="">(保存なし)</option>
+        </select>
+        <button id="loadNamedBtn" type="button">読み込む</button>
+        <button id="deleteNamedBtn" type="button">削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <div class="table-card">
+    <h2><span class="dot" id="stfDot"></span>STF 配置一覧</h2>
+    <div id="stfTableHolder"></div>
+  </div>
+  <div class="table-card">
+    <h2><span class="dot" id="ydkDot"></span>YDK 配置一覧</h2>
+    <div id="ydkTableHolder"></div>
+  </div>
+  <div class="table-card" id="thirdAllianceCard" style="display:none;">
+    <h2><span class="dot" id="thirdDot"></span><span id="thirdAllianceTitle">第3同盟 配置一覧</span></h2>
+    <div id="thirdTableHolder"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

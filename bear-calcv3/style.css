@@ -1,0 +1,223 @@
+/* =========================================
+   1. 変数定義（テーマカラー・共通設定）
+   ========================================= */
+:root {
+    /* フォント設定：iPhoneやAndroidの標準フォントを指定 */
+    --font-main: -apple-system, "Hiragino Sans", "Helvetica Neue", sans-serif;
+    --font-mono: "SF Mono", "Menlo", monospace; /* 計算用の等幅フォント */
+    
+    /* るびぃedition（デフォルト）の配色 */
+    --main-text: #263238;     /* 基本文字色 */
+    --accent: #f8bbd0;        /* 盾・スライダー等のアクセント（ピンク） */
+    --sub-accent: #51b9e9;    /* ボタンや見出しのサブアクセント（水色） */
+    --bg: #f4f7f9;            /* 画面全体の背景色 */
+    --container-bg: #ffffff;  /* 計算機本体の背景色 */
+    --border: #b3e5fc;        /* 枠線の色 */
+    --input-bg: #ffffff;      /* 入力欄の背景色 */
+    --header-bg: #e1f5fe;     /* ヘッダーの背景色 */
+    --dmg-color: #d81b60;     /* ダメージ数値の色 */
+}
+
+/* じゃんくedition（ダークモード）切り替え時の配色上書き */
+body.junk-theme {
+    --main-text: #eeeeee;     /* 文字を白っぽく */
+    --accent: #d4af37;        /* アクセントをゴールドに */
+    --sub-accent: #b71c1c;    /* サブを深い赤に */
+    --bg: #121212;            /* 背景を黒に */
+    --container-bg: #1a1a1a;  /* 本体をダークグレーに */
+    --border: #424242;        /* 枠線を暗く */
+    --input-bg: #262626;      /* 入力欄を暗く */
+    --header-bg: #212121;     /* ヘッダーを暗く */
+    --dmg-color: #ffd740;     /* ダメージ数値を明るい黄色に */
+}
+
+/* =========================================
+   2. 基本レイアウト・iPhoneスクロール制御
+   ========================================= */
+html, body { 
+    height: 100%; 
+    overflow-y: auto;                  /* 縦スクロールを許可 */
+    -webkit-overflow-scrolling: touch; /* iOSでの滑らかなスクロールを有効化 */
+} 
+
+body { 
+    font-family: var(--font-main); 
+    font-size: 13px; 
+    color: var(--main-text); 
+    background: var(--bg); 
+    margin: 0; 
+    padding: 4px; 
+    transition: all 0.2s ease; /* モード切替時の色変化を滑らかにする */
+}
+
+/* 計算機の外枠（最大幅400pxで中央寄せ） */
+.container { 
+    max-width: 400px; 
+    margin: auto; 
+    background: var(--container-bg); 
+    padding: 8px; 
+    border-radius: 12px; 
+    box-sizing: border-box; 
+    min-height: 100%; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    padding-bottom: 40px; /* iPhone下部のメニューバーとの被りを防止 */
+}
+
+/* =========================================
+   3. ヘッダー・見出し
+   ========================================= */
+header { 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center;
+    min-height: 54px; 
+    border-bottom: 3px solid var(--accent); /* エディションによって色が変わる下線 */
+    margin-bottom: 6px; 
+    padding: 4px 10px; 
+    background: var(--header-bg); 
+    border-radius: 8px 8px 0 0; 
+}
+
+h1 { font-size: 1.1rem; margin: 0; font-weight: 800; text-align: center; }
+.sub-title { 
+    font-size: 11px; color: var(--sub-accent); 
+    cursor: pointer; text-decoration: underline; 
+    font-weight: bold; margin-top: 2px; align-self: flex-end; 
+}
+.ver { font-size: 9px; opacity: 0.6; margin-left: 4px; }
+
+/* 各セクション（入力ブロック）の外枠 */
+.section { 
+    border: 1px solid var(--border); 
+    padding: 8px; 
+    margin-bottom: 6px; 
+    border-radius: 8px; 
+    background: var(--input-bg); 
+}
+
+/* セクション内の小見出し（盾・槍・弓など） */
+.title { 
+    font-size: 10px; font-weight: 900; 
+    border-left: 4px solid var(--sub-accent); 
+    padding-left: 6px; display: block; margin-bottom: 6px; 
+}
+
+/* 「残り：〇%」のバッジ表示 */
+.rem-pct { 
+    font-size: 10px; font-weight: 900; 
+    color: #fff; background: var(--sub-accent); 
+    padding: 2px 8px; border-radius: 10px; 
+}
+
+/* =========================================
+   4. 入力・グリッド・ボタン
+   ========================================= */
+/* 火晶・Tier・バフ入力欄の横並び制御 */
+.label-row, .grid { 
+    display: grid; 
+    grid-template-columns: 32px 55px 65px 1px 1fr 1fr; /* 各項目の幅を細かく固定 */
+    gap: 4px; align-items: center; margin-bottom: 4px; 
+}
+
+.label-text { font-size: 8px; font-weight: bold; text-align: center; color: var(--sub-accent); opacity: 0.8; }
+.v-line { background: var(--border); width: 1px; height: 24px; justify-self: center; } /* 中央の縦区切り線 */
+
+/* 「盾」「槍」「弓」のラベルタグ */
+.tag { 
+    background: var(--sub-accent); color: #fff; 
+    font-size: 10px; text-align: center; 
+    padding: 5px 0; border-radius: 5px; font-weight: 900; 
+}
+
+/* 入力フォーム共通（セレクトボックス・数値入力） */
+input, select { 
+    font-family: var(--font-mono); 
+    border: 1.5px solid var(--border); 
+    border-radius: 6px; 
+    height: 34px; 
+    text-align: center; 
+    font-size: 13px; 
+    width: 100%; 
+    box-sizing: border-box; 
+    background: var(--input-bg); 
+    color: var(--main-text); 
+    outline: none; 
+    -webkit-appearance: none; /* iOS標準のスタイルを無効化して自前で描画 */
+}
+
+/* プラスマイナスボタン等 */
+.btn-s { background: var(--input-bg); border: 1.5px solid var(--sub-accent); color: var(--sub-accent); width: 44px; height: 34px; border-radius: 8px; font-weight: 900; font-size: 18px; touch-action: manipulation; }
+.btn-s-small { background: var(--input-bg); border: 1px solid var(--sub-accent); color: var(--sub-accent); width: 34px; height: 30px; border-radius: 6px; font-weight: 900; }
+
+/* 兵士割合/人数の表示行 */
+.input-row { display:grid; grid-template-columns: 32px 60px 85px 1fr; gap:6px; align-items:center; margin-bottom:4px; }
+.count-disp { font-size:10px; font-family:var(--font-mono); font-weight:700; }
+
+/* =========================================
+   5. スライダーバー（今回アップデートのメイン）
+   ========================================= */
+.slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+
+/* スライダーのレール（溝）部分 */
+input[type="range"] { 
+    -webkit-appearance: none; 
+    background: var(--border); 
+    height: 6px; 
+    border-radius: 3px; 
+    flex: 1; 
+    outline: none; 
+}
+
+/* スライダーのつまみ（丸い部分）の制御 */
+input[type="range"]::-webkit-slider-thumb { 
+    -webkit-appearance: none; 
+    width: 24px; /* iPhoneで指で掴みやすいサイズに調整 */
+    height: 24px; 
+    background: var(--accent); /* エディション切替でここがピンク/ゴールドに変わる */
+    border-radius: 50%; 
+    border: 2px solid #fff; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+}
+
+/* 「割合/人数」切り替えボタン */
+.u-btn { background: var(--input-bg); border: 1.5px solid var(--sub-accent); padding: 5px 0; font-size: 10px; border-radius: 15px; text-align: center; color: var(--sub-accent); font-weight: 900; cursor: pointer; }
+.u-btn.active { background: var(--sub-accent); color: #fff; } /* 選択中の色 */
+
+/* =========================================
+   6. 計算結果・推奨割合
+   ========================================= */
+/* 合計ダメージ表示ボックス */
+.res-box { 
+    border: 2.5px solid var(--accent); 
+    padding: 6px 10px; 
+    border-radius: 12px; 
+    text-align: center; 
+    margin-bottom: 8px; 
+    background: rgba(248, 187, 208, 0.05); /* ほんのり背景色 */
+}
+.res-label { font-size: 10px; font-weight: 900; display: block; letter-spacing: 1px; }
+#resDmg { font-family: var(--font-mono); font-size: 2rem; font-weight: 900; color: var(--dmg-color); line-height: 1.1; }
+
+/* 推奨割合表示エリア */
+.best-area { background: var(--sub-accent); color: #fff; padding: 8px; border-radius: 10px; text-align: center; margin-bottom: 6px; }
+.best-txt { font-size: 13px; font-weight: 900; display: block; margin-bottom: 2px; }
+.best-dmg { font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
+
+/* =========================================
+   7. リセットボタン・ログ
+   ========================================= */
+.reset-btn { width: 100%; padding: 10px; background: none; border: 1px solid var(--border); color: #999; border-radius: 20px; font-size: 10px; cursor: pointer; }
+.log-summary { font-size: 10px; color: var(--sub-accent); cursor: pointer; font-weight: 900; }
+.log { 
+    background: rgba(128,128,128,0.04); 
+    padding: 10px; border-radius: 8px; 
+    white-space: pre-wrap; /* 改行をそのまま表示 */
+    font-family: var(--font-mono); 
+    font-size: 10px; 
+    color: var(--main-text); 
+    border: 1px solid var(--border); 
+    line-height: 1.4; 
+}
+/* ログ内の見出し */
+.log-head { color: var(--sub-accent); font-weight: 900; margin: 6px 0 2px; display: block; border-bottom: 1px solid var(--border); }

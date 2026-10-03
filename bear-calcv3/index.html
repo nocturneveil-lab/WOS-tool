@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>熊ダメ計算機 v3.6</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>熊ダメ計算機 <span class="ver">v3.6</span></h1>
+        <span class="sub-title" id="editionLabel" onclick="toggleEdition()">るびぃedition</span>
+    </header>
+
+    <div class="section">
+        <span class="title">各種設定</span>
+        <div class="label-row">
+            <div></div><div class="label-text">火晶</div><div class="label-text">兵士Tier</div><div></div><div class="label-text">攻撃力</div><div class="label-text">殺傷力</div>
+        </div>
+        <div class="grid">
+            <div class="tag">盾</div>
+            <select id="fci" onchange="calc()"></select><select id="ti" onchange="calc()"></select>
+            <div class="v-line"></div>
+            <input type="number" id="bAi" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+            <input type="number" id="bKi" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+        </div>
+        <div class="grid">
+            <div class="tag">槍</div>
+            <select id="fcl" onchange="calc()"></select><select id="tl" onchange="calc()"></select>
+            <div class="v-line"></div>
+            <input type="number" id="bAl" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+            <input type="number" id="bKl" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+        </div>
+        <div class="grid">
+            <div class="tag">弓</div>
+            <select id="fca" onchange="calc()"></select><select id="ta" onchange="calc()"></select>
+            <div class="v-line"></div>
+            <input type="number" id="bAa" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+            <input type="number" id="bKa" value="0.0" step="0.1" inputmode="decimal" onfocus="cl(this)" onblur="re(this)" oninput="vM(this);calc()">
+        </div>
+    </div>
+
+    <div class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="title" style="margin:0;">出征数：<span id="tDisp">--</span></span>
+            <span id="remDisp" class="rem-pct">残り：0%</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin:4px 0;">
+            <button class="btn-s" onclick="st(-10)">−</button>
+            <input type="range" id="tr" min="0" max="1000000" step="10" value="100000" oninput="sy()" style="flex:1;">
+            <button class="btn-s" onclick="st(10)">＋</button>
+        </div>
+
+        <div class="兵種別-area" style="margin-top:10px;">
+            <div class="input-row"><div class="tag">盾</div><div class="u-btn active" id="mI" onclick="tg('I')">割合</div><input type="number" id="iI" value="33" oninput="vM(this);hi('I')"><div id="sI" class="count-disp"></div></div>
+            <div class="slider-row"><button class="btn-s-small" onclick="st_pct('I',-1)">−</button><input type="range" id="rI" min="0" max="100" value="33" oninput="sl('I')"><button class="btn-s-small" onclick="st_pct('I',1)">＋</button></div>
+            
+            <div class="input-row"><div class="tag">槍</div><div class="u-btn active" id="mL" onclick="tg('L')">割合</div><input type="number" id="iL" value="33" oninput="vM(this);hi('L')"><div id="sL" class="count-disp"></div></div>
+            <div class="slider-row"><button class="btn-s-small" onclick="st_pct('L',-1)">−</button><input type="range" id="rL" min="0" max="100" value="33" oninput="sl('L')"><button class="btn-s-small" onclick="st_pct('L',1)">＋</button></div>
+            
+            <div class="input-row"><div class="tag">弓</div><div class="u-btn active" id="mA" onclick="tg('A')">割合</div><input type="number" id="iA" value="34" oninput="vM(this);hi('A')"><div id="sA" class="count-disp"></div></div>
+            <div class="slider-row"><button class="btn-s-small" onclick="st_pct('A',-1)">−</button><input type="range" id="rA" min="0" max="100" value="34" oninput="sl('A')"><button class="btn-s-small" onclick="st_pct('A',1)">＋</button></div>
+        </div>
+    </div>
+
+    <div class="res-box">
+        <span class="res-label">推定合計ダメージ</span>
+        <div id="resDmg">0</div>
+    </div>
+
+    <div class="best-area">
+        <span class="best-txt" id="bT">---</span>
+        <span class="best-dmg" id="bDMG">推奨時の推定ダメ: 0</span>
+    </div>
+
+    <button class="reset-btn" onclick="rs()">数値をリセット</button>
+
+    <div class="log-section">
+        <details>
+            <summary class="log-summary">📊 詳細ログを確認</summary>
+            <div class="log" id="log"></div>
+        </details>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
+
