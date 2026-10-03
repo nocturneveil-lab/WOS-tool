@@ -209,6 +209,7 @@
     <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true">編集モード</button>
     <button id="saveLayoutButton" type="button">ファイルに保存</button>
     <button id="loadLayoutButton" type="button">読み込み</button>
+    <button id="exportSvgButton" type="button">SVG出力</button>
     <input id="layoutFileInput" type="file" accept=".json,application/json">
     <span id="layoutFileStatus" class="layout-file-status" role="status" aria-live="polite"></span>
     <button id="undoAction" type="button" disabled>ひとつ戻る</button>
@@ -351,7 +352,6 @@
     return pts.map(function(p){ return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join(" ");
   }
 
-  var CLASSIFICATION_KEY = "diamond_map_classifications_v1";
   var OBJECT_COLOR_KEY = "alliance_map_object_colors_v1";
   var DEFAULT_TYPE_COLORS = { headquarters: "#ed817a", flag: "#f4d57b", city: "#82b8e8", bearTrap: "#8fcda0", allianceBuilding: "#7d96ff", largeGatheringSite: "#d5a783", unavailable: "#b8b8b8" };
   function loadTypeColors(){
@@ -370,76 +370,20 @@
   }
   var TYPE_COLORS = loadTypeColors();
   var TYPE_LABELS = { headquarters: "本部", flag: "旗", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
-  var PLACEMENT_KEY = "diamond_map_placements_v1";
   var PLACEMENT_SIZES = { headquarters: 3, bearTrap: 3, city: 2, flag: 1, allianceBuilding: 2, largeGatheringSite: 3, unavailable: 1 };
-  function loadClassifications(){
-    try{
-      var raw = localStorage.getItem(CLASSIFICATION_KEY);
-      var parsed = raw ? JSON.parse(raw) : {};
-      if (parsed && typeof parsed === "object"){
-        Object.keys(parsed).forEach(function(key){
-          if (parsed[key] !== "headquarters" && parsed[key] !== "flag" && parsed[key] !== "city" && parsed[key] !== "bearTrap" && parsed[key] !== "allianceBuilding" && parsed[key] !== "largeGatheringSite" && parsed[key] !== "unavailable" && parsed[key] !== "none") delete parsed[key];
-        });
-        return parsed;
-      }
-    }catch(e){ console.error("classification load failed", e); }
-    return {};
-  }
-  function saveClassifications(){
-    try{ localStorage.setItem(CLASSIFICATION_KEY, JSON.stringify(classifications)); }
-    catch(e){ console.error("classification save failed", e); }
-  }
-  var classifications = loadClassifications();
+  // 配置は起動のたびに default-layout.json から読み込み、ブラウザには保存しない。
+  // 編集内容は「ファイルに保存」で書き出し、管理者が default-layout.json を差し替える。
+  var classifications = {};
+  var placements = [];
   var activeTool = "headquarters";
   var editMode = false;
-  function loadPlacements(){
-    try{
-      var raw = localStorage.getItem(PLACEMENT_KEY);
-      var parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)){
-        return parsed.filter(function(placement){
-          var isLegacyCity = placement && placement.type === "city" && Array.isArray(placement.cells) && placement.cells.length === 16;
-          return placement && PLACEMENT_SIZES[placement.type] && typeof placement.anchor === "string" && Array.isArray(placement.cells) && (placement.cells.length === PLACEMENT_SIZES[placement.type] * PLACEMENT_SIZES[placement.type] || isLegacyCity) && (placement.type !== "city" || typeof placement.name === "string");
-        });
-      }
-    }catch(e){ console.error("placement load failed", e); }
-    return [];
-  }
-  function savePlacements(){
-    try{ localStorage.setItem(PLACEMENT_KEY, JSON.stringify(placements)); }
-    catch(e){ console.error("placement save failed", e); }
-  }
-  var placements = loadPlacements();
-  var migratedCities = false;
-  var migratedAnchors = false;
-  placements.forEach(function(placement){
-    if (placement.type === "city" && placement.cells.length === 16){
-      var oldCells = placement.cells.slice();
-      var cityAnchor = placement.anchor.split("_");
-      placement.anchor = (parseInt(cityAnchor[0], 10) + 1) + "_" + (parseInt(cityAnchor[1], 10) + 1);
-      placement.anchorMode = "bottom-cell";
-      placement.cells = getPlacementCells("city", placement.anchor);
-      var newCells = {};
-      placement.cells.forEach(function(key){ newCells[key] = true; });
-      oldCells.forEach(function(key){
-        if (!newCells[key] && classifications[key] === "city") delete classifications[key];
-      });
-      placement.cells.forEach(function(key){ classifications[key] = "city"; });
-      migratedCities = true;
-    }
-    if (placement.anchorMode !== "bottom-cell"){
-      var anchor = placement.anchor.split("_");
-      var shift = placement.anchorMode === "origin" ? PLACEMENT_SIZES[placement.type] - 1 :
-        (placement.type === "headquarters" || placement.type === "bearTrap" ? 1 : 0);
-      placement.anchor = (parseInt(anchor[0], 10) + shift) + "_" + (parseInt(anchor[1], 10) + shift);
-      placement.anchorMode = "bottom-cell";
-      migratedAnchors = true;
-    }
+  var hasUnsavedChanges = false;
+  function markLayoutChanged(){ hasUnsavedChanges = true; }
+  window.addEventListener("beforeunload", function(event){
+    if (!hasUnsavedChanges) return;
+    event.preventDefault();
+    event.returnValue = "";
   });
-  if (migratedCities || migratedAnchors){
-    saveClassifications();
-    savePlacements();
-  }
   function getPlacementCells(type, anchorKey){
     var parts = anchorKey.split("_");
     var col = parseInt(parts[0], 10), row = parseInt(parts[1], 10);
@@ -496,8 +440,7 @@
     var changedCells = {};
     previousCells.concat(placement.cells).forEach(function(key){ changedCells[key] = true; });
     Object.keys(changedCells).forEach(function(key){ syncPlacementCell(key, placement.type); });
-    saveClassifications();
-    savePlacements();
+    markLayoutChanged();
     render();
   }
   function undoMapAction(){
@@ -509,8 +452,7 @@
     panY = previous.panY;
     zoom = previous.zoom;
     updateGridMetrics();
-    saveClassifications();
-    savePlacements();
+    markLayoutChanged();
     document.getElementById("zoomValue").textContent = Math.round(zoom * 100) + "%";
     updateUndoButton();
     render();
@@ -523,8 +465,7 @@
     classifications = {};
     zoom = 2.5;
     centerMapView();
-    saveClassifications();
-    savePlacements();
+    markLayoutChanged();
     document.getElementById("zoomValue").textContent = "250%";
     render();
   });
@@ -541,16 +482,25 @@
       objectColors: TYPE_COLORS,
       view: { panX: panX, panY: panY, zoom: zoom, mapCols: mapCols, mapRows: mapRows }
     };
-    var blob = new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" });
+    downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
+      "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
+    hasUnsavedChanges = false;
+    layoutFileStatus.textContent = "JSONを保存しました";
+  });
+  function downloadFile(blob, fileName){
     var url = URL.createObjectURL(blob);
     var link = document.createElement("a");
     link.href = url;
-    link.download = "alliance-map-" + formatFileTimestamp(savedAt) + ".json";
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    layoutFileStatus.textContent = "JSONを保存しました";
+  }
+  document.getElementById("exportSvgButton").addEventListener("click", function(){
+    downloadFile(new Blob([buildExportSvg()], { type: "image/svg+xml" }),
+      "alliance-map-" + formatFileTimestamp(new Date()) + ".svg");
+    layoutFileStatus.textContent = "SVGを出力しました";
   });
   document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
   function applyLayout(imported){
@@ -619,8 +569,7 @@
     mapRowsInput.value = String(mapRows);
     zoomValue.textContent = Math.round(zoom * 100) + "%";
     updateGridMetrics();
-    saveClassifications();
-    savePlacements();
+    hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
     refreshObjectColorInputs();
@@ -647,8 +596,7 @@
     placement.anchorMode = "bottom-cell";
     if (type === "city" || type === "allianceBuilding") placement.name = name;
     placements.push(placement);
-    saveClassifications();
-    savePlacements();
+    markLayoutChanged();
     render();
   }
   function eraseAt(key){
@@ -663,8 +611,7 @@
     rememberMapState();
     if (index !== -1) removePlacementAt(index);
     else classifications[key] = "none";
-    saveClassifications();
-    savePlacements();
+    markLayoutChanged();
     render();
   }
   function handleCellClick(key, event){
@@ -709,7 +656,7 @@
       }
       rememberMapState();
       pendingCity.placement.name = name;
-      savePlacements();
+      markLayoutChanged();
       render();
     }else{
       placeStructure(targetType, pendingCity.anchor, name);
@@ -1215,22 +1162,46 @@
     });
   }
 
+  // 表示中のズーム・位置に関係なく、MAP範囲全体を1枚のSVGとして書き出す。
+  function buildExportSvg(){
+    var colStart = -Math.floor(mapCols / 2) - 0.5;
+    var colEnd = Math.ceil(mapCols / 2) - 0.5;
+    var rowStart = -Math.floor(mapRows / 2) - 0.5;
+    var rowEnd = Math.ceil(mapRows / 2) - 0.5;
+    var top = toScreen(colStart, rowStart);
+    var right = toScreen(colEnd, rowStart);
+    var bottom = toScreen(colEnd, rowEnd);
+    var left = toScreen(colStart, rowEnd);
+    var padding = HW;
+    var minX = left.x - padding, minY = top.y - padding;
+    var width = right.x - left.x + padding * 2;
+    var height = bottom.y - top.y + padding * 2;
+    var exportSvg = el("svg", {
+      xmlns: svgns,
+      viewBox: minX.toFixed(1) + " " + minY.toFixed(1) + " " + width.toFixed(1) + " " + height.toFixed(1),
+      width: Math.round(width * 2),
+      height: Math.round(height * 2),
+      "font-family": "Hiragino Sans, Yu Gothic UI, Meiryo, sans-serif"
+    });
+    exportSvg.appendChild(el("rect", { x: minX, y: minY, width: width, height: height, fill: "#ffffff" }));
+    var content = gridLayer.cloneNode(true);
+    content.removeAttribute("transform");
+    Array.from(content.querySelectorAll(".map-center-point")).forEach(function(node){ node.remove(); });
+    exportSvg.appendChild(content);
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(exportSvg);
+  }
+
   render();
   (function loadPublishedLayout(){
-    var hasSavedLayout = false;
-    try{
-      hasSavedLayout = localStorage.getItem(CLASSIFICATION_KEY) !== null || localStorage.getItem(PLACEMENT_KEY) !== null;
-    }catch(error){
-      console.error("saved layout check failed", error);
-    }
-    if (hasSavedLayout) return;
-    fetch("./default-layout.json")
+    fetch("./default-layout.json", { cache: "no-cache" })
       .then(function(response){
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.json();
       })
       .then(function(layout){
         applyLayout(layout);
+        undoStack = [];
+        updateUndoButton();
         layoutFileStatus.textContent = "公開用の配置を読み込みました";
       })
       .catch(function(error){
