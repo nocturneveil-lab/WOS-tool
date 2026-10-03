@@ -330,9 +330,20 @@
     CX = VIEW_W / 2;
     CY = VIEW_H / 2;
   }
+  // 表示位置は「画面中央に映っている点がマップ中心から何マス分ずれているか」で扱う。
+  // panX/panY は画面サイズに依存するため、保存や画面サイズ変更ではこの値を使う。
+  function getViewCenter(){
+    return {
+      x: ((VIEW_W / 2 - panX) / zoom - CX) / HW,
+      y: ((VIEW_H / 2 - panY) / zoom - CY) / HH
+    };
+  }
+  function setViewCenter(center){
+    panX = VIEW_W / 2 - (CX + center.x * HW) * zoom;
+    panY = VIEW_H / 2 - (CY + center.y * HH) * zoom;
+  }
   function centerMapView(){
-    panX = VIEW_W / 2 - CX * zoom;
-    panY = VIEW_H / 2 - CY * zoom;
+    setViewCenter({ x: 0, y: 0 });
   }
   updateGridMetrics();
   centerMapView();
@@ -482,7 +493,7 @@
       classifications: classifications,
       placements: placements,
       objectColors: TYPE_COLORS,
-      view: { panX: panX, panY: panY, zoom: zoom, mapCols: mapCols, mapRows: mapRows }
+      view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
     };
     downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
       "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
@@ -554,16 +565,15 @@
     }
     var view = imported.view && typeof imported.view === "object" ? imported.view : {};
     var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : zoomBase;
-    var nextPanX = Number.isFinite(view.panX) ? view.panX : (VIEW_W / 2 - CX * nextZoom);
-    var nextPanY = Number.isFinite(view.panY) ? view.panY : (VIEW_H / 2 - CY * nextZoom);
+    // 旧形式の panX/panY は保存した人の画面サイズ依存なので使わず、マップ中心を表示する。
+    var nextCenter = view.center && Number.isFinite(view.center.x) && Number.isFinite(view.center.y) ?
+      { x: view.center.x, y: view.center.y } : { x: 0, y: 0 };
     var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
     var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 32, 10, 80) : mapRows;
     rememberMapState();
     classifications = nextClassifications;
     placements = nextPlacements;
     TYPE_COLORS = nextTypeColors;
-    panX = nextPanX;
-    panY = nextPanY;
     zoom = nextZoom;
     mapCols = nextMapCols;
     mapRows = nextMapRows;
@@ -571,6 +581,7 @@
     mapRowsInput.value = String(mapRows);
     updateZoomReadout();
     updateGridMetrics();
+    setViewCenter(nextCenter);
     hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
@@ -680,7 +691,9 @@
   var objectDragState = null;
   var suppressNextClick = false;
   window.addEventListener("resize", function(){
+    var center = getViewCenter();
     updateGridMetrics();
+    setViewCenter(center);
     render();
   });
   var labelSizeInput = document.getElementById("labelSizeInput");
