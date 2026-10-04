@@ -154,6 +154,19 @@
     color:var(--text);
     font:inherit;
   }
+  .image-preview{
+    width:min(560px,100%);
+    max-height:calc(100vh - 40px);
+    overflow-y:auto;
+    padding:14px;
+    background:var(--panel-bg);
+    color:var(--text);
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+  }
+  .image-preview p{margin:0 0 10px;font-size:13px;}
+  .image-preview img{display:block;width:100%;height:auto;background:#ffffff;-webkit-touch-callout:default;}
+  .image-preview button[hidden]{display:none;}
   .city-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
   .settings-form{width:min(420px,100%);max-height:calc(100vh - 40px);overflow-y:auto;}
   .settings-form h2{margin:0 0 14px;font-size:16px;font-weight:600;}
@@ -214,6 +227,7 @@
     <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true">編集モード</button>
     <button id="saveLayoutButton" type="button">ファイルに保存</button>
     <button id="loadLayoutButton" type="button">読み込み</button>
+    <button id="exportPngButton" type="button">画像出力</button>
     <button id="exportSvgButton" type="button">SVG出力</button>
     <input id="layoutFileInput" type="file" accept=".json,application/json">
     <span id="layoutFileStatus" class="layout-file-status" role="status" aria-live="polite"></span>
@@ -239,6 +253,18 @@
       <button id="cityNameSubmit" type="submit">配置</button>
     </div>
   </form>
+</div>
+
+<div class="city-dialog" id="imagePreviewDialog" role="dialog" aria-modal="true" aria-label="マップ画像" hidden>
+  <div class="image-preview">
+    <p>画像を長押しすると「写真に追加」で保存できます。</p>
+    <img id="imagePreview" alt="マップ画像">
+    <div class="city-dialog-actions">
+      <button id="shareImage" type="button">共有</button>
+      <button id="downloadImage" type="button">ダウンロード</button>
+      <button id="closeImagePreview" type="button">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <div class="city-dialog" id="objectColorDialog" role="dialog" aria-modal="true" aria-labelledby="objectColorTitle" hidden>
@@ -533,6 +559,78 @@
     downloadFile(new Blob([buildExportSvg()], { type: "image/svg+xml" }),
       "alliance-map-" + formatFileTimestamp(new Date()) + ".svg");
     layoutFileStatus.textContent = "SVGを出力しました";
+  });
+  // iPhone の写真アプリや Discord は SVG を表示できないため、PNG でも出力する。
+  // スマホではプレビューを開き、長押し保存か共有ボタンで渡せるようにする。
+  var PNG_EXPORT_SIZE = 2400;
+  var imagePreviewDialog = document.getElementById("imagePreviewDialog");
+  var imagePreview = document.getElementById("imagePreview");
+  var shareImageButton = document.getElementById("shareImage");
+  var previewFile = null;
+  function isTouchDevice(){
+    return window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  }
+  function renderPngBlob(callback){
+    var svgUrl = URL.createObjectURL(new Blob([buildExportSvg(PNG_EXPORT_SIZE)], { type: "image/svg+xml" }));
+    var image = new Image();
+    image.onload = function(){
+      var canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth || PNG_EXPORT_SIZE;
+      canvas.height = image.naturalHeight || PNG_EXPORT_SIZE;
+      var context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+      canvas.toBlob(function(blob){
+        if (blob) callback(blob);
+        else layoutFileStatus.textContent = "画像を作成できません";
+      }, "image/png");
+    };
+    image.onerror = function(){
+      URL.revokeObjectURL(svgUrl);
+      layoutFileStatus.textContent = "画像を作成できません";
+    };
+    image.src = svgUrl;
+  }
+  function openImagePreview(file){
+    previewFile = file;
+    if (imagePreview.src) URL.revokeObjectURL(imagePreview.src);
+    imagePreview.src = URL.createObjectURL(file);
+    shareImageButton.hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
+    imagePreviewDialog.hidden = false;
+  }
+  function closeImagePreview(){
+    imagePreviewDialog.hidden = true;
+  }
+  document.getElementById("exportPngButton").addEventListener("click", function(){
+    layoutFileStatus.textContent = "画像を作成しています…";
+    renderPngBlob(function(blob){
+      var fileName = "alliance-map-" + formatFileTimestamp(new Date()) + ".png";
+      if (isTouchDevice()){
+        openImagePreview(new File([blob], fileName, { type: "image/png" }));
+        layoutFileStatus.textContent = "画像を作成しました";
+      }else{
+        downloadFile(blob, fileName);
+        layoutFileStatus.textContent = "画像を出力しました";
+      }
+    });
+  });
+  shareImageButton.addEventListener("click", function(){
+    if (!previewFile) return;
+    navigator.share({ files: [previewFile] }).catch(function(error){
+      if (error && error.name !== "AbortError") layoutFileStatus.textContent = "共有できません: " + error.message;
+    });
+  });
+  document.getElementById("downloadImage").addEventListener("click", function(){
+    if (previewFile) downloadFile(previewFile, previewFile.name);
+  });
+  document.getElementById("closeImagePreview").addEventListener("click", closeImagePreview);
+  imagePreviewDialog.addEventListener("click", function(event){
+    if (event.target === imagePreviewDialog) closeImagePreview();
+  });
+  document.addEventListener("keydown", function(event){
+    if (event.key === "Escape" && !imagePreviewDialog.hidden) closeImagePreview();
   });
   document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
   function applyLayout(imported){
@@ -1309,7 +1407,8 @@
   }
 
   // 表示中のズーム・位置に関係なく、MAP範囲全体を1枚のSVGとして書き出す。
-  function buildExportSvg(){
+  // pixelSize を渡すと、PNG化用に長辺がそのピクセル数になる width/height を付ける。
+  function buildExportSvg(pixelSize){
     var colStart = -Math.floor(mapCols / 2) - 0.5;
     var colEnd = Math.ceil(mapCols / 2) - 0.5;
     var rowStart = -Math.floor(mapRows / 2) - 0.5;
@@ -1329,6 +1428,11 @@
       preserveAspectRatio: "xMidYMid meet",
       "font-family": "Hiragino Sans, Yu Gothic UI, Meiryo, sans-serif"
     });
+    if (pixelSize){
+      var pixelScale = pixelSize / Math.max(width, height);
+      exportSvg.setAttribute("width", Math.round(width * pixelScale));
+      exportSvg.setAttribute("height", Math.round(height * pixelScale));
+    }
     exportSvg.appendChild(el("rect", { x: minX, y: minY, width: width, height: height, fill: "#ffffff" }));
     var content = gridLayer.cloneNode(true);
     content.removeAttribute("transform");
