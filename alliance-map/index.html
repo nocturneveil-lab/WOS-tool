@@ -53,6 +53,8 @@
     cursor:default;
     touch-action:none;
     user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
   }
   .map-wrap.pan-ready{cursor:grab;}
   .map-wrap.dragging{cursor:grabbing;}
@@ -225,12 +227,12 @@
 
 <div class="city-dialog" id="cityNameDialog" hidden>
   <form id="cityNameForm">
-    <label for="cityNameInput">都市名
+    <label for="cityNameInput"><span id="cityNameTitle">都市名</span>
       <input id="cityNameInput" type="text" maxlength="24" required autocomplete="off">
     </label>
     <div class="city-dialog-actions">
       <button id="cancelCityName" type="button">キャンセル</button>
-      <button type="submit">配置</button>
+      <button id="cityNameSubmit" type="submit">配置</button>
     </div>
   </form>
 </div>
@@ -382,7 +384,7 @@
     catch(e){ console.error("object color save failed", e); }
   }
   var TYPE_COLORS = loadTypeColors();
-  var TYPE_LABELS = { headquarters: "本部", flag: "旗", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
+  var TYPE_LABELS = { headquarters: "本部", flag: "旗", city: "都市", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
   var PLACEMENT_SIZES = { headquarters: 3, bearTrap: 3, city: 2, flag: 1, allianceBuilding: 2, largeGatheringSite: 3, unavailable: 1 };
   // 配置は起動のたびに default-layout.json から読み込み、ブラウザには保存しない。
   // 編集内容は「ファイルに保存」で書き出し、管理者が default-layout.json を差し替える。
@@ -541,11 +543,12 @@
         anchorMode: "bottom-cell",
         cells: getPlacementCells(item.type, item.anchor)
       };
-      if (item.type === "city" || item.type === "allianceBuilding"){
-        if (typeof item.name !== "string" || !item.name.trim() || item.name.trim().length > 24){
+      if (isNameRequired(item.type) || item.name !== undefined){
+        var trimmedName = typeof item.name === "string" ? item.name.trim() : "";
+        if (typeof item.name !== "string" || trimmedName.length > 24 || (isNameRequired(item.type) && !trimmedName)){
           throw new Error("名称が不正です");
         }
-        placement.name = item.name.trim();
+        if (trimmedName) placement.name = trimmedName;
       }
       placement.cells.forEach(function(key){ nextClassifications[key] = placement.type; });
       return placement;
@@ -629,7 +632,7 @@
   }
   function handleCellClick(key, event){
     if (!editMode) return;
-    if (suppressNextClick || event.ctrlKey) return;
+    if (suppressNextClick || event.ctrlKey || Date.now() < suppressClickUntil) return;
     if (activeTool === "erase"){
       eraseAt(key);
       return;
@@ -642,44 +645,77 @@
           break;
         }
       }
-      var existingNamedPlacement = topPlacement && (topPlacement.type === "city" || topPlacement.type === "allianceBuilding") ? topPlacement : null;
-      pendingCity = existingNamedPlacement ? { placement: existingNamedPlacement } : { anchor: key };
-      cityNameInput.value = existingNamedPlacement ? (existingNamedPlacement.name || "") : "";
-      cityNameDialog.hidden = false;
-      cityNameInput.focus();
+      if (topPlacement && isNameRequired(topPlacement.type)) openRenameDialog(topPlacement);
+      else openNewNameDialog(key);
       return;
     }
-    var fixedName = activeTool === "headquarters" ? "本部" : (activeTool === "bearTrap" ? "熊罠" : "");
-    placeStructure(activeTool, key, fixedName);
+    placeStructure(activeTool, key, "");
   }
   var cityNameDialog = document.getElementById("cityNameDialog");
   var cityNameForm = document.getElementById("cityNameForm");
   var cityNameInput = document.getElementById("cityNameInput");
+  var cityNameTitle = document.getElementById("cityNameTitle");
+  var cityNameSubmit = document.getElementById("cityNameSubmit");
   var pendingCity = null;
+  // 都市・同盟建築物は名前必須。それ以外は空欄なら種類名（旗・配置不能は表示なし）に戻る。
+  function isNameRequired(type){
+    return type === "city" || type === "allianceBuilding";
+  }
+  function getPlacementLabel(placement){
+    if (placement.name) return placement.name;
+    return placement.type === "flag" || placement.type === "unavailable" ? "" : TYPE_LABELS[placement.type];
+  }
+  function showNameDialog(title, submitText, value, required, placeholder){
+    cityNameTitle.textContent = title;
+    cityNameSubmit.textContent = submitText;
+    cityNameInput.value = value;
+    cityNameInput.required = required;
+    cityNameInput.placeholder = placeholder;
+    cityNameDialog.hidden = false;
+    cityNameInput.focus();
+    cityNameInput.select();
+  }
+  function openNewNameDialog(anchorKey){
+    pendingCity = { anchor: anchorKey };
+    showNameDialog(activeTool === "allianceBuilding" ? "同盟建築物名" : "都市名", "配置", "", true, "");
+  }
+  function openRenameDialog(placement){
+    if (!editMode) return;
+    pendingCity = { placement: placement };
+    var required = isNameRequired(placement.type);
+    showNameDialog("名称変更（" + TYPE_LABELS[placement.type] + "）", "変更", placement.name || "", required,
+      required ? "" : "空欄で標準表示に戻ります");
+  }
+  function closeNameDialog(){
+    pendingCity = null;
+    cityNameDialog.hidden = true;
+  }
   cityNameForm.addEventListener("submit", function(event){
     event.preventDefault();
+    if (!pendingCity) return;
     var name = cityNameInput.value.trim();
-    if (!name || !pendingCity) return;
-    var targetType = pendingCity.placement ? pendingCity.placement.type : (activeTool === "allianceBuilding" ? "allianceBuilding" : "city");
-    if (pendingCity.placement){
-      if (pendingCity.placement.name === name){
-        pendingCity = null;
-        cityNameDialog.hidden = true;
-        return;
+    var placement = pendingCity.placement;
+    if (placement){
+      if (!name && isNameRequired(placement.type)) return;
+      if ((placement.name || "") !== name){
+        rememberMapState();
+        if (name) placement.name = name;
+        else delete placement.name;
+        markLayoutChanged();
+        render();
       }
-      rememberMapState();
-      pendingCity.placement.name = name;
-      markLayoutChanged();
-      render();
     }else{
-      placeStructure(targetType, pendingCity.anchor, name);
+      if (!name) return;
+      placeStructure(activeTool === "allianceBuilding" ? "allianceBuilding" : "city", pendingCity.anchor, name);
     }
-    pendingCity = null;
-    cityNameDialog.hidden = true;
+    closeNameDialog();
   });
-  document.getElementById("cancelCityName").addEventListener("click", function(){
-    pendingCity = null;
-    cityNameDialog.hidden = true;
+  document.getElementById("cancelCityName").addEventListener("click", closeNameDialog);
+  cityNameDialog.addEventListener("click", function(event){
+    if (event.target === cityNameDialog) closeNameDialog();
+  });
+  document.addEventListener("keydown", function(event){
+    if (event.key === "Escape" && !cityNameDialog.hidden) closeNameDialog();
   });
 
   var svgns = "http://www.w3.org/2000/svg";
@@ -830,6 +866,34 @@
   svg.addEventListener("pointerleave", function(){
     coordReadout.style.display = "none";
   });
+  // スマホは長押し、PCは右クリック（contextmenu）で名称変更を開く。
+  var LONG_PRESS_MS = 500;
+  var longPressState = null;
+  var suppressClickUntil = 0;
+  function startLongPress(event, placement){
+    cancelLongPress();
+    if (!editMode) return;
+    longPressState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      fired: false,
+      timer: window.setTimeout(function(){
+        if (!longPressState) return;
+        longPressState.fired = true;
+        suppressClickUntil = Date.now() + 60000;
+        dragState = null;
+        mapWrap.classList.remove("dragging");
+        openRenameDialog(placement);
+      }, LONG_PRESS_MS)
+    };
+  }
+  function cancelLongPress(){
+    if (!longPressState) return;
+    window.clearTimeout(longPressState.timer);
+    if (longPressState.fired) suppressClickUntil = Date.now() + 400;
+    longPressState = null;
+  }
   function startObjectDrag(event, placement, objectLayer){
     if (!editMode) return;
     if (event.button !== 0 || event.ctrlKey || event.pointerType === "touch") return;
@@ -881,6 +945,7 @@
         worldY: (center.y - panY) / zoom
       };
       dragState = null;
+      cancelLongPress();
       return;
     }
     if (event.button !== 0) return;
@@ -899,6 +964,10 @@
     }
   });
   window.addEventListener("pointermove", function(event){
+    if (longPressState && !longPressState.fired && event.pointerId === longPressState.pointerId &&
+        Math.abs(event.clientX - longPressState.startX) + Math.abs(event.clientY - longPressState.startY) > 10){
+      cancelLongPress();
+    }
     if (objectDragState && event.pointerId === objectDragState.pointerId){
       var objectDx = event.clientX - objectDragState.startX;
       var objectDy = event.clientY - objectDragState.startY;
@@ -941,6 +1010,7 @@
     gridLayer.setAttribute("transform", "translate(" + (dragState.panX + dx * scaleX) + " " + (dragState.panY + dy * scaleY) + ") scale(" + zoom + ")");
   });
   function finishDrag(event){
+    if (longPressState && event.pointerId === longPressState.pointerId) cancelLongPress();
     if (objectDragState && event.pointerId === objectDragState.pointerId){
       var objectDrag = objectDragState;
       objectDragState = null;
@@ -1081,7 +1151,7 @@
         "data-layer-id": "layer-" + layerIndex + "-" + placement.type + "-" + placement.anchor,
         "data-object-type": placement.type,
         "data-anchor": placement.anchor,
-        "data-name": (placement.type === "city" || placement.type === "allianceBuilding") ? (placement.name || TYPE_LABELS[placement.type]) : TYPE_LABELS[placement.type]
+        "data-name": getPlacementLabel(placement) || TYPE_LABELS[placement.type]
       });
       objectLayer.appendChild(el("polygon", {
         points: footprint,
@@ -1100,14 +1170,22 @@
       });
       objectLayer.appendChild(shape);
       objectLayer.addEventListener("pointerdown", function(event){
+        if (event.pointerType === "touch") startLongPress(event, placement);
         if (event.ctrlKey || event.metaKey) return;
         startObjectDrag(event, placement, objectLayer);
+      });
+      objectLayer.addEventListener("contextmenu", function(event){
+        if (!editMode) return;
+        event.preventDefault();
+        if (Date.now() < suppressClickUntil) return;
+        openRenameDialog(placement);
       });
       objectLayer.addEventListener("click", function(event){
         if (event.ctrlKey || event.metaKey) return;
         handleCellClick(cellKeyAtClientPoint(event.clientX, event.clientY), event);
       });
-      if (placement.type !== "flag" && placement.type !== "unavailable"){
+      var label = getPlacementLabel(placement);
+      if (label){
         var vertices = footprint.split(" ").map(function(point){
           var pair = point.split(",");
           return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
@@ -1117,7 +1195,6 @@
           total.y += point.y / vertices.length;
           return total;
         }, { x: 0, y: 0 });
-        var label = (placement.type === "city" || placement.type === "allianceBuilding") ? (placement.name || TYPE_LABELS[placement.type]) : TYPE_LABELS[placement.type];
         var baseFontSize = Math.max(6, Math.min(12, labelScale));
         var minX = Math.min.apply(null, vertices.map(function(point){ return point.x; }));
         var maxX = Math.max.apply(null, vertices.map(function(point){ return point.x; }));
