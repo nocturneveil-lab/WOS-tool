@@ -1,7 +1,7 @@
 {
   "format": "alliance-map-layout",
   "version": 1,
-  "savedAt": "2026-10-03T19:41:17.344Z",
+  "savedAt": "2026-10-04T07:29:49.184Z",
   "classifications": {
     "0_0": "city",
     "-6_-6": "headquarters",
@@ -390,7 +390,8 @@
         "-3_3",
         "-3_4",
         "-3_5"
-      ]
+      ],
+      "name": "🐻\nメイン"
     },
     {
       "type": "flag",
@@ -814,7 +815,7 @@
         "-7_5",
         "-7_6"
       ],
-      "name": "Mr.ポポ"
+      "name": "つかちゃん"
     },
     {
       "type": "city",
@@ -1102,7 +1103,8 @@
         "6_-6",
         "6_-5",
         "6_-4"
-      ]
+      ],
+      "name": "🧸\nサブ"
     },
     {
       "type": "flag",
@@ -1530,17 +1532,20 @@
     }
   ],
   "objectColors": {
-    "headquarters": "#ed817a",
+    "headquarters": "#f3b9b4",
     "flag": "#f4d57b",
-    "city": "#82b8e8",
-    "bearTrap": "#8fcda0",
-    "allianceBuilding": "#7d96ff",
+    "city": "#cbf0ff",
+    "bearTrap": "#dfeed4",
+    "allianceBuilding": "#bec8f4",
     "largeGatheringSite": "#d5a783",
     "unavailable": "#b8b8b8"
   },
+  "bearTrapLabelSize": 12,
   "view": {
-    "panX": -1018.7966555757416,
-    "panY": -498.9580187343646,
+    "center": {
+      "x": 0,
+      "y": 0
+    },
     "zoom": 2.046826890502978,
     "mapCols": 32,
     "mapRows": 32
