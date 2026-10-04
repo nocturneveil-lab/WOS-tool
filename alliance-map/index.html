@@ -538,7 +538,7 @@
       placements: placements,
       objectColors: TYPE_COLORS,
       bearTrapLabelSize: bearTrapLabelSize,
-      view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
+      view: { zoom: zoom, mapCols: mapCols, mapRows: mapRows }
     };
     downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
       "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
@@ -683,9 +683,6 @@
     }
     var view = imported.view && typeof imported.view === "object" ? imported.view : {};
     var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : zoomBase;
-    // 旧形式の panX/panY は保存した人の画面サイズ依存なので使わず、マップ中心を表示する。
-    var nextCenter = view.center && Number.isFinite(view.center.x) && Number.isFinite(view.center.y) ?
-      { x: view.center.x, y: view.center.y } : { x: 0, y: 0 };
     var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
     var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 32, 10, 80) : mapRows;
     var nextBearTrapLabelSize = Number.isInteger(imported.bearTrapLabelSize) ?
@@ -702,7 +699,8 @@
     mapRowsInput.value = String(mapRows);
     updateZoomReadout();
     updateGridMetrics();
-    setViewCenter(nextCenter);
+    // 保存時の表示位置（view.center や旧形式の panX/panY）は使わず、常にマップ中心から表示する。
+    centerMapView();
     hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
