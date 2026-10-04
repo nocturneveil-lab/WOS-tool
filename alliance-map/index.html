@@ -142,7 +142,10 @@
     box-shadow:0 8px 28px rgba(0,0,0,0.22);
   }
   .city-dialog label{display:flex;flex-direction:column;gap:8px;font-size:14px;}
-  .city-dialog input{
+  .city-dialog textarea{resize:vertical;line-height:1.4;}
+  .city-dialog textarea[hidden]{display:none;}
+  .city-dialog input,
+  .city-dialog textarea{
     width:100%;
     padding:9px 10px;
     border:1px solid var(--panel-border);
@@ -229,6 +232,7 @@
   <form id="cityNameForm">
     <label for="cityNameInput"><span id="cityNameTitle">都市名</span>
       <input id="cityNameInput" type="text" maxlength="24" required autocomplete="off">
+      <textarea id="cityNameTextarea" rows="3" maxlength="24" autocomplete="off" hidden></textarea>
     </label>
     <div class="city-dialog-actions">
       <button id="cancelCityName" type="button">キャンセル</button>
@@ -244,6 +248,10 @@
     <div class="settings-map-size">
       <label>横<input id="mapColsInput" type="number" min="10" max="80" step="2" value="32"></label>
       <label>縦<input id="mapRowsInput" type="number" min="10" max="80" step="2" value="32"></label>
+    </div>
+    <h3>文字サイズ</h3>
+    <div class="settings-map-size">
+      <label>熊罠<input id="bearTrapLabelSizeInput" type="number" min="6" max="30" step="1" value="12"></label>
     </div>
     <h3>オブジェクトの色</h3>
     <div class="settings-color-list">
@@ -311,6 +319,14 @@
   mapCols = loadIntegerSetting(MAP_COLS_KEY, 32, 10, 80);
   mapRows = loadIntegerSetting(MAP_ROWS_KEY, 32, 10, 80);
   labelScale = loadLabelScale();
+  // 熊罠の文字サイズは「文字サイズ」スライダーとは独立した固定値。
+  var BEAR_TRAP_LABEL_SIZE_KEY = "alliance_map_bear_trap_label_size_v1";
+  var DEFAULT_BEAR_TRAP_LABEL_SIZE = 12;
+  var bearTrapLabelSize = loadIntegerSetting(BEAR_TRAP_LABEL_SIZE_KEY, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30);
+  function saveBearTrapLabelSize(){
+    try{ localStorage.setItem(BEAR_TRAP_LABEL_SIZE_KEY, String(bearTrapLabelSize)); }
+    catch(e){ console.error("bear trap label size save failed", e); }
+  }
   var panX = 0, panY = 0;
   var zoom = 2.5;
   // 表示上の100%にあたる実ズーム。公開用の初期配置を読み込んだときのズームを基準にする。
@@ -495,6 +511,7 @@
       classifications: classifications,
       placements: placements,
       objectColors: TYPE_COLORS,
+      bearTrapLabelSize: bearTrapLabelSize,
       view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
     };
     downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
@@ -573,10 +590,13 @@
       { x: view.center.x, y: view.center.y } : { x: 0, y: 0 };
     var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
     var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 32, 10, 80) : mapRows;
+    var nextBearTrapLabelSize = Number.isInteger(imported.bearTrapLabelSize) ?
+      clampMapSize(imported.bearTrapLabelSize, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30) : bearTrapLabelSize;
     rememberMapState();
     classifications = nextClassifications;
     placements = nextPlacements;
     TYPE_COLORS = nextTypeColors;
+    bearTrapLabelSize = nextBearTrapLabelSize;
     zoom = nextZoom;
     mapCols = nextMapCols;
     mapRows = nextMapRows;
@@ -588,6 +608,7 @@
     hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
+    saveBearTrapLabelSize();
     refreshObjectColorInputs();
     updateMapToolColors();
     render();
@@ -654,6 +675,8 @@
   var cityNameDialog = document.getElementById("cityNameDialog");
   var cityNameForm = document.getElementById("cityNameForm");
   var cityNameInput = document.getElementById("cityNameInput");
+  var cityNameTextarea = document.getElementById("cityNameTextarea");
+  var activeNameField = cityNameInput;
   var cityNameTitle = document.getElementById("cityNameTitle");
   var cityNameSubmit = document.getElementById("cityNameSubmit");
   var pendingCity = null;
@@ -665,15 +688,24 @@
     if (placement.name) return placement.name;
     return placement.type === "flag" || placement.type === "unavailable" ? "" : TYPE_LABELS[placement.type];
   }
-  function showNameDialog(title, submitText, value, required, placeholder){
+  // multiline のときは改行できる textarea（熊罠用）、それ以外は1行の input を使う。
+  function showNameDialog(title, submitText, value, required, placeholder, multiline){
+    activeNameField = multiline ? cityNameTextarea : cityNameInput;
+    var inactiveField = multiline ? cityNameInput : cityNameTextarea;
+    inactiveField.hidden = true;
+    inactiveField.required = false;
+    activeNameField.hidden = false;
     cityNameTitle.textContent = title;
     cityNameSubmit.textContent = submitText;
-    cityNameInput.value = value;
-    cityNameInput.required = required;
-    cityNameInput.placeholder = placeholder;
+    activeNameField.value = value;
+    activeNameField.required = required;
+    activeNameField.placeholder = placeholder;
     cityNameDialog.hidden = false;
-    cityNameInput.focus();
-    cityNameInput.select();
+    activeNameField.focus();
+    activeNameField.select();
+  }
+  function normalizeName(value){
+    return value.split(/\r?\n/).map(function(line){ return line.trim(); }).filter(Boolean).join("\n");
   }
   function openNewNameDialog(anchorKey){
     pendingCity = { anchor: anchorKey };
@@ -683,8 +715,9 @@
     if (!editMode) return;
     pendingCity = { placement: placement };
     var required = isNameRequired(placement.type);
+    var multiline = placement.type === "bearTrap";
     showNameDialog("名称変更（" + TYPE_LABELS[placement.type] + "）", "変更", placement.name || "", required,
-      required ? "" : "空欄で標準表示に戻ります");
+      required ? "" : (multiline ? "改行できます。空欄で標準表示に戻ります" : "空欄で標準表示に戻ります"), multiline);
   }
   function closeNameDialog(){
     pendingCity = null;
@@ -693,7 +726,7 @@
   cityNameForm.addEventListener("submit", function(event){
     event.preventDefault();
     if (!pendingCity) return;
-    var name = cityNameInput.value.trim();
+    var name = normalizeName(activeNameField.value);
     var placement = pendingCity.placement;
     if (placement){
       if (!name && isNameRequired(placement.type)) return;
@@ -754,9 +787,11 @@
     });
   }
   function closeObjectColorDialog(){ objectColorDialog.hidden = true; }
+  var bearTrapLabelSizeInput = document.getElementById("bearTrapLabelSizeInput");
   document.getElementById("openObjectColorSettings").addEventListener("click", function(){
     refreshObjectColorInputs();
     refreshMapRangeInputs();
+    bearTrapLabelSizeInput.value = String(bearTrapLabelSize);
     objectColorDialog.hidden = false;
     objectColorInputs[0].focus();
   });
@@ -774,6 +809,8 @@
     event.preventDefault();
     objectColorInputs.forEach(function(input){ TYPE_COLORS[input.getAttribute("data-object-color")] = input.value.toLowerCase(); });
     saveTypeColors();
+    bearTrapLabelSize = clampMapSize(bearTrapLabelSizeInput.value, bearTrapLabelSize, 6, 30);
+    saveBearTrapLabelSize();
     updateMapToolColors();
     closeObjectColorDialog();
     applyMapRange();
@@ -1195,11 +1232,14 @@
           total.y += point.y / vertices.length;
           return total;
         }, { x: 0, y: 0 });
-        var baseFontSize = Math.max(6, Math.min(12, labelScale));
+        // 熊罠は設定の固定サイズで描き、自動縮小しない。改行は熊罠の名前でのみ入力できる。
+        var isBearTrap = placement.type === "bearTrap";
+        var baseFontSize = isBearTrap ? bearTrapLabelSize : Math.max(6, Math.min(12, labelScale));
+        var lines = label.split("\n");
         var minX = Math.min.apply(null, vertices.map(function(point){ return point.x; }));
         var maxX = Math.max.apply(null, vertices.map(function(point){ return point.x; }));
         var allowedWidth = (maxX - minX) * (1 - innerPaddingRatio);
-        var labelText = el("text", {
+        var labelAttrs = {
           x: center.x,
           y: center.y + baseFontSize * 0.35,
           "text-anchor": "middle",
@@ -1207,12 +1247,23 @@
           "font-weight": "600",
           fill: "#222222",
           "pointer-events": "none",
-          "data-fit-width": allowedWidth,
           "data-center-y": center.y,
           class: "object-label",
           style: "paint-order:stroke;stroke:#ffffff;stroke-width:" + (baseFontSize * 0.22) + "px;stroke-linejoin:round;"
-        });
-        labelText.textContent = label;
+        };
+        if (!isBearTrap && lines.length === 1) labelAttrs["data-fit-width"] = allowedWidth;
+        var labelText = el("text", labelAttrs);
+        if (lines.length === 1){
+          labelText.textContent = label;
+        }else{
+          var lineHeight = baseFontSize * 1.2;
+          var firstLineY = center.y + baseFontSize * 0.35 - lineHeight * (lines.length - 1) / 2;
+          lines.forEach(function(line, lineIndex){
+            var tspan = el("tspan", { x: center.x, y: firstLineY + lineHeight * lineIndex });
+            tspan.textContent = line;
+            labelText.appendChild(tspan);
+          });
+        }
         labelLayer.appendChild(labelText);
       }
       gridLayer.appendChild(objectLayer);
