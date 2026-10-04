@@ -1324,9 +1324,9 @@
     var height = bottom.y - top.y + padding * 2;
     var exportSvg = el("svg", {
       xmlns: svgns,
+      // width/height は指定せず、開いた画面に合わせて全体を中央に収める。
       viewBox: minX.toFixed(1) + " " + minY.toFixed(1) + " " + width.toFixed(1) + " " + height.toFixed(1),
-      width: Math.round(width * 2),
-      height: Math.round(height * 2),
+      preserveAspectRatio: "xMidYMid meet",
       "font-family": "Hiragino Sans, Yu Gothic UI, Meiryo, sans-serif"
     });
     exportSvg.appendChild(el("rect", { x: minX, y: minY, width: width, height: height, fill: "#ffffff" }));

@@ -1,9 +1,8 @@
 {
   "format": "alliance-map-layout",
   "version": 1,
-  "savedAt": "2026-10-04T07:29:49.184Z",
+  "savedAt": "2026-10-04T15:35:07.630Z",
   "classifications": {
-    "0_0": "city",
     "-6_-6": "headquarters",
     "-6_-5": "headquarters",
     "-5_-6": "headquarters",
@@ -35,9 +34,6 @@
     "0_3": "city",
     "-3_0": "city",
     "-3_1": "city",
-    "-1_0": "city",
-    "-1_1": "city",
-    "0_1": "city",
     "-1_5": "city",
     "-1_6": "city",
     "0_5": "city",
@@ -63,10 +59,6 @@
     "1_3": "city",
     "2_2": "city",
     "2_3": "city",
-    "-2_-2": "city",
-    "-2_-1": "city",
-    "-3_-2": "city",
-    "-3_-1": "city",
     "-1_-2": "city",
     "-1_-1": "city",
     "0_-2": "city",
@@ -166,10 +158,6 @@
     "-8_10": "city",
     "-7_9": "city",
     "-7_10": "city",
-    "-10_7": "city",
-    "-10_8": "city",
-    "-9_7": "city",
-    "-9_8": "city",
     "-10_9": "city",
     "-10_10": "city",
     "-9_9": "city",
@@ -335,14 +323,6 @@
     "-1_-8": "city",
     "0_-9": "city",
     "0_-8": "city",
-    "-1_-7": "city",
-    "-1_-6": "city",
-    "0_-7": "city",
-    "0_-6": "city",
-    "-3_-11": "city",
-    "-3_-10": "city",
-    "-2_-11": "city",
-    "-2_-10": "city",
     "-4_-13": "city",
     "-4_-12": "city",
     "-3_-13": "city",
@@ -370,10 +350,22 @@
     "3_3": "city",
     "4_2": "city",
     "4_3": "city",
-    "6_3": "city",
-    "6_4": "city",
-    "7_3": "city",
-    "7_4": "city"
+    "-1_0": "allianceBuilding",
+    "-1_1": "allianceBuilding",
+    "0_0": "allianceBuilding",
+    "0_1": "allianceBuilding",
+    "6_3": "allianceBuilding",
+    "6_4": "allianceBuilding",
+    "7_3": "allianceBuilding",
+    "7_4": "allianceBuilding",
+    "-1_-7": "allianceBuilding",
+    "-1_-6": "allianceBuilding",
+    "0_-7": "allianceBuilding",
+    "0_-6": "allianceBuilding",
+    "-3_-2": "allianceBuilding",
+    "-3_-1": "allianceBuilding",
+    "-2_-2": "allianceBuilding",
+    "-2_-1": "allianceBuilding"
   },
   "placements": [
     {
@@ -483,18 +475,6 @@
     },
     {
       "type": "city",
-      "anchor": "0_1",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "-1_0",
-        "-1_1",
-        "0_0",
-        "0_1"
-      ],
-      "name": "征服者"
-    },
-    {
-      "type": "city",
       "anchor": "0_6",
       "anchorMode": "bottom-cell",
       "cells": [
@@ -572,18 +552,6 @@
         "2_3"
       ],
       "name": "ハル"
-    },
-    {
-      "type": "city",
-      "anchor": "-2_-1",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "-3_-2",
-        "-3_-1",
-        "-2_-2",
-        "-2_-1"
-      ],
-      "name": "マスター像"
     },
     {
       "type": "city",
@@ -888,18 +856,6 @@
         "-7_10"
       ],
       "name": "どめ虫"
-    },
-    {
-      "type": "city",
-      "anchor": "-9_8",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "-10_7",
-        "-10_8",
-        "-9_7",
-        "-9_8"
-      ],
-      "name": "プリンセスこまち"
     },
     {
       "type": "city",
@@ -1404,7 +1360,7 @@
         "2_-9",
         "2_-8"
       ],
-      "name": "つかこ"
+      "name": "SACトグサ"
     },
     {
       "type": "city",
@@ -1428,31 +1384,7 @@
         "0_-9",
         "0_-8"
       ],
-      "name": "SACトグサ"
-    },
-    {
-      "type": "city",
-      "anchor": "0_-6",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "-1_-7",
-        "-1_-6",
-        "0_-7",
-        "0_-6"
-      ],
-      "name": "精鋭先陣"
-    },
-    {
-      "type": "city",
-      "anchor": "-2_-10",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "-3_-11",
-        "-3_-10",
-        "-2_-11",
-        "-2_-10"
-      ],
-      "name": "2"
+      "name": "つかこ"
     },
     {
       "type": "city",
@@ -1519,16 +1451,52 @@
       "name": "ぺんたん"
     },
     {
-      "type": "city",
-      "anchor": "7_4",
+      "type": "allianceBuilding",
+      "anchor": "0_1",
+      "cells": [
+        "-1_0",
+        "-1_1",
+        "0_0",
+        "0_1"
+      ],
       "anchorMode": "bottom-cell",
+      "name": "征服者"
+    },
+    {
+      "type": "allianceBuilding",
+      "anchor": "7_4",
       "cells": [
         "6_3",
         "6_4",
         "7_3",
         "7_4"
       ],
+      "anchorMode": "bottom-cell",
       "name": "同盟鉄鉱場"
+    },
+    {
+      "type": "allianceBuilding",
+      "anchor": "0_-6",
+      "cells": [
+        "-1_-7",
+        "-1_-6",
+        "0_-7",
+        "0_-6"
+      ],
+      "anchorMode": "bottom-cell",
+      "name": "精鋭先陣"
+    },
+    {
+      "type": "allianceBuilding",
+      "anchor": "-2_-1",
+      "cells": [
+        "-3_-2",
+        "-3_-1",
+        "-2_-2",
+        "-2_-1"
+      ],
+      "anchorMode": "bottom-cell",
+      "name": "マスター像"
     }
   ],
   "objectColors": {
@@ -1543,10 +1511,10 @@
   "bearTrapLabelSize": 12,
   "view": {
     "center": {
-      "x": 0,
-      "y": 0
+      "x": 7.5236301177410905,
+      "y": 2.6389075717539447
     },
-    "zoom": 2.046826890502978,
+    "zoom": 1.852045565834276,
     "mapCols": 32,
     "mapRows": 32
   }
