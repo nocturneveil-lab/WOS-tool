@@ -1,7 +1,7 @@
 {
   "format": "alliance-map-layout",
   "version": 1,
-  "savedAt": "2026-10-04T15:35:07.630Z",
+  "savedAt": "2026-10-14T09:53:22.015Z",
   "classifications": {
     "-6_-6": "headquarters",
     "-6_-5": "headquarters",
@@ -365,7 +365,11 @@
     "-3_-2": "allianceBuilding",
     "-3_-1": "allianceBuilding",
     "-2_-2": "allianceBuilding",
-    "-2_-1": "allianceBuilding"
+    "-2_-1": "allianceBuilding",
+    "-10_7": "city",
+    "-10_8": "city",
+    "-9_7": "city",
+    "-9_8": "city"
   },
   "placements": [
     {
@@ -1453,50 +1457,62 @@
     {
       "type": "allianceBuilding",
       "anchor": "0_1",
+      "anchorMode": "bottom-cell",
       "cells": [
         "-1_0",
         "-1_1",
         "0_0",
         "0_1"
       ],
-      "anchorMode": "bottom-cell",
       "name": "征服者"
     },
     {
       "type": "allianceBuilding",
       "anchor": "7_4",
+      "anchorMode": "bottom-cell",
       "cells": [
         "6_3",
         "6_4",
         "7_3",
         "7_4"
       ],
-      "anchorMode": "bottom-cell",
       "name": "同盟鉄鉱場"
     },
     {
       "type": "allianceBuilding",
       "anchor": "0_-6",
+      "anchorMode": "bottom-cell",
       "cells": [
         "-1_-7",
         "-1_-6",
         "0_-7",
         "0_-6"
       ],
-      "anchorMode": "bottom-cell",
       "name": "精鋭先陣"
     },
     {
       "type": "allianceBuilding",
       "anchor": "-2_-1",
+      "anchorMode": "bottom-cell",
       "cells": [
         "-3_-2",
         "-3_-1",
         "-2_-2",
         "-2_-1"
       ],
-      "anchorMode": "bottom-cell",
       "name": "マスター像"
+    },
+    {
+      "type": "city",
+      "anchor": "-9_8",
+      "cells": [
+        "-10_7",
+        "-10_8",
+        "-9_7",
+        "-9_8"
+      ],
+      "anchorMode": "bottom-cell",
+      "name": "鉄板少女あかね"
     }
   ],
   "objectColors": {
@@ -1510,10 +1526,6 @@
   },
   "bearTrapLabelSize": 12,
   "view": {
-    "center": {
-      "x": 7.5236301177410905,
-      "y": 2.6389075717539447
-    },
     "zoom": 1.852045565834276,
     "mapCols": 32,
     "mapRows": 32
