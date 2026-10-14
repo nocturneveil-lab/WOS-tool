@@ -1,7 +1,7 @@
 {
   "format": "alliance-map-layout",
   "version": 1,
-  "savedAt": "2026-10-14T09:53:22.015Z",
+  "savedAt": "2026-10-14T10:07:51.025Z",
   "classifications": {
     "-6_-6": "headquarters",
     "-6_-5": "headquarters",
@@ -242,22 +242,12 @@
     "6_-1": "city",
     "7_-2": "city",
     "7_-1": "city",
-    "8_-2": "city",
-    "8_-1": "city",
-    "9_-2": "city",
-    "9_-1": "city",
     "10_0": "city",
     "10_1": "city",
     "11_0": "city",
     "11_1": "city",
-    "10_-2": "city",
-    "10_-1": "city",
-    "11_-2": "city",
-    "11_-1": "city",
     "9_-4": "city",
     "9_-3": "city",
-    "10_-4": "city",
-    "10_-3": "city",
     "8_-7": "city",
     "8_-6": "city",
     "9_-7": "city",
@@ -266,10 +256,6 @@
     "6_-8": "city",
     "7_-9": "city",
     "7_-8": "city",
-    "8_-9": "city",
-    "8_-8": "city",
-    "9_-9": "city",
-    "9_-8": "city",
     "8_-11": "city",
     "8_-10": "city",
     "9_-11": "city",
@@ -369,7 +355,29 @@
     "-10_7": "city",
     "-10_8": "city",
     "-9_7": "city",
-    "-9_8": "city"
+    "-9_8": "city",
+    "0_12": "city",
+    "0_13": "city",
+    "1_12": "city",
+    "1_13": "city",
+    "8_3": "city",
+    "8_4": "city",
+    "9_3": "city",
+    "9_4": "city",
+    "8_-4": "city",
+    "8_-3": "city",
+    "8_-2": "city",
+    "8_-1": "city",
+    "9_-2": "city",
+    "9_-1": "city",
+    "10_-2": "city",
+    "10_-1": "city",
+    "11_-2": "city",
+    "11_-1": "city",
+    "10_-7": "city",
+    "10_-6": "city",
+    "11_-7": "city",
+    "11_-6": "city"
   },
   "placements": [
     {
@@ -1144,18 +1152,6 @@
     },
     {
       "type": "city",
-      "anchor": "9_-1",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "8_-2",
-        "8_-1",
-        "9_-2",
-        "9_-1"
-      ],
-      "name": "ポテコ"
-    },
-    {
-      "type": "city",
       "anchor": "11_1",
       "anchorMode": "bottom-cell",
       "cells": [
@@ -1165,30 +1161,6 @@
         "11_1"
       ],
       "name": "ざっくでらろちゃ"
-    },
-    {
-      "type": "city",
-      "anchor": "11_-1",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "10_-2",
-        "10_-1",
-        "11_-2",
-        "11_-1"
-      ],
-      "name": "えむみ"
-    },
-    {
-      "type": "city",
-      "anchor": "10_-3",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "9_-4",
-        "9_-3",
-        "10_-4",
-        "10_-3"
-      ],
-      "name": "ちょっと太った辰"
     },
     {
       "type": "city",
@@ -1213,18 +1185,6 @@
         "7_-8"
       ],
       "name": "ぴんきぃ"
-    },
-    {
-      "type": "city",
-      "anchor": "9_-8",
-      "anchorMode": "bottom-cell",
-      "cells": [
-        "8_-9",
-        "8_-8",
-        "9_-9",
-        "9_-8"
-      ],
-      "name": "しょーやん"
     },
     {
       "type": "city",
@@ -1513,6 +1473,78 @@
       ],
       "anchorMode": "bottom-cell",
       "name": "鉄板少女あかね"
+    },
+    {
+      "type": "city",
+      "anchor": "1_13",
+      "cells": [
+        "0_12",
+        "0_13",
+        "1_12",
+        "1_13"
+      ],
+      "anchorMode": "bottom-cell",
+      "name": "はぐれメタル"
+    },
+    {
+      "type": "city",
+      "anchor": "9_4",
+      "cells": [
+        "8_3",
+        "8_4",
+        "9_3",
+        "9_4"
+      ],
+      "anchorMode": "bottom-cell",
+      "name": "あっかん少女てぱね"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-3",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-4",
+        "8_-3",
+        "9_-4",
+        "9_-3"
+      ],
+      "name": "ゴメス"
+    },
+    {
+      "type": "city",
+      "anchor": "9_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "8_-2",
+        "8_-1",
+        "9_-2",
+        "9_-1"
+      ],
+      "name": "えむみ"
+    },
+    {
+      "type": "city",
+      "anchor": "11_-1",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_-2",
+        "10_-1",
+        "11_-2",
+        "11_-1"
+      ],
+      "name": "ポテコ"
+    },
+    {
+      "type": "city",
+      "anchor": "11_-6",
+      "anchorMode": "bottom-cell",
+      "cells": [
+        "10_-7",
+        "10_-6",
+        "11_-7",
+        "11_-6"
+      ],
+      "name": "しょーやん"
     }
   ],
   "objectColors": {
