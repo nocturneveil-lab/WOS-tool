@@ -1,7 +1,7 @@
 {
   "format": "alliance-map-layout",
   "version": 1,
-  "savedAt": "2026-10-14T10:07:51.025Z",
+  "savedAt": "2026-10-14T10:16:26.266Z",
   "classifications": {
     "-6_-6": "headquarters",
     "-6_-5": "headquarters",
@@ -1465,37 +1465,37 @@
     {
       "type": "city",
       "anchor": "-9_8",
+      "anchorMode": "bottom-cell",
       "cells": [
         "-10_7",
         "-10_8",
         "-9_7",
         "-9_8"
       ],
-      "anchorMode": "bottom-cell",
       "name": "鉄板少女あかね"
     },
     {
       "type": "city",
       "anchor": "1_13",
+      "anchorMode": "bottom-cell",
       "cells": [
         "0_12",
         "0_13",
         "1_12",
         "1_13"
       ],
-      "anchorMode": "bottom-cell",
       "name": "はぐれメタル"
     },
     {
       "type": "city",
       "anchor": "9_4",
+      "anchorMode": "bottom-cell",
       "cells": [
         "8_3",
         "8_4",
         "9_3",
         "9_4"
       ],
-      "anchorMode": "bottom-cell",
       "name": "あっかん少女てぱね"
     },
     {
@@ -1558,6 +1558,10 @@
   },
   "bearTrapLabelSize": 12,
   "view": {
+    "center": {
+      "x": 2.957658484495672,
+      "y": 2.853912504296463
+    },
     "zoom": 1.852045565834276,
     "mapCols": 32,
     "mapRows": 32
