@@ -538,7 +538,7 @@
       placements: placements,
       objectColors: TYPE_COLORS,
       bearTrapLabelSize: bearTrapLabelSize,
-      view: { zoom: zoom, mapCols: mapCols, mapRows: mapRows }
+      view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
     };
     downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
       "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
@@ -699,8 +699,7 @@
     mapRowsInput.value = String(mapRows);
     updateZoomReadout();
     updateGridMetrics();
-    // 保存時の表示位置（view.center や旧形式の panX/panY）は使わず、常にマップ中心から表示する。
-    centerMapView();
+    setViewCenter(nextCenter);
     hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
