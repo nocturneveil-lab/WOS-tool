@@ -14,7 +14,7 @@
     <div class="tool-picker" id="toolPicker" data-role-ui="edit">
       <!-- ツール一覧はこのボタンで開閉する -->
       <button id="toolPickerButton" class="map-tool tool-picker-button" type="button" data-type="select" aria-haspopup="true" aria-expanded="false" aria-controls="toolList">選択</button>
-      <div class="map-tools header-popup" id="toolList" role="group" aria-label="ツール">
+      <div class="header-popup" id="toolList" role="group" aria-label="ツール">
         <button class="map-tool active" type="button" data-type="select" aria-pressed="true">選択</button>
         <button class="map-tool" type="button" data-type="headquarters" aria-pressed="false">本部</button>
         <button class="map-tool" type="button" data-type="flag" aria-pressed="false">旗</button>
@@ -38,7 +38,7 @@
     <button id="moreMenuButton" class="more-menu-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu" aria-label="その他の操作" title="その他の操作">⋯</button>
     <div class="more-menu header-popup" id="moreMenu">
       <div class="menu-row menu-zoom">ズーム <span class="zoom-value">100%</span></div>
-      <label class="menu-row label-size-control" for="labelSizeInput">
+      <label class="menu-row" for="labelSizeInput">
         <span>文字サイズ</span>
         <input id="labelSizeInput" type="range" min="6" max="12" step="1" value="8">
         <output id="labelSizeOutput" for="labelSizeInput">8 px</output>
