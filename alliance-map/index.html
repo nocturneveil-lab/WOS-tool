@@ -584,14 +584,15 @@
   var hasUnsavedChanges = false;
   var localChangeListeners = [];
   // kind: "edit"（配置・移動・消去・名前変更）、"undo"、"reset"、"settings"、"file"
-  function emitLocalChange(kind){
+  // previousLayout: マップを丸ごと置き換える操作（reset・file）のときだけ、変更前のレイアウトを渡す。
+  function emitLocalChange(kind, previousLayout){
     localChangeListeners.forEach(function(callback){
-      try{ callback(kind); }catch(e){ console.error("local change listener failed", e); }
+      try{ callback(kind, previousLayout); }catch(e){ console.error("local change listener failed", e); }
     });
   }
-  function markLayoutChanged(kind){
+  function markLayoutChanged(kind, previousLayout){
     hasUnsavedChanges = true;
-    emitLocalChange(kind || "edit");
+    emitLocalChange(kind || "edit", previousLayout);
   }
   // 離脱警告の判定。cloud.js が権限に応じた判定に差し替える。
   var unloadGuard = function(){ return hasUnsavedChanges; };
@@ -677,15 +678,16 @@
   document.getElementById("resetMapAction").addEventListener("click", function(){
     if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * zoomBase) && panY === (VIEW_H / 2 - CY * zoomBase) && zoom === zoomBase) return;
     var resetMessage = currentRole === "saver" ?
-      "マップの配置をすべて消去します。\nWeb上のマップが全員分消えます（直後なら「ひとつ戻る」で戻せます）。よろしいですか？" :
+      "マップの配置をすべて消去します。\nWeb上のマップが全員分消えます（リセット前の状態は履歴から戻せます）。よろしいですか？" :
       "マップの配置をすべて消去します。よろしいですか？";
     if (!window.confirm(resetMessage)) return;
+    var previousLayout = getLayout();
     rememberMapState();
     placements = [];
     classifications = {};
     zoom = zoomBase;
     centerMapView();
-    markLayoutChanged("reset");
+    markLayoutChanged("reset", previousLayout);
     updateZoomReadout();
     render();
   });
@@ -895,13 +897,14 @@
   layoutFileInput.addEventListener("change", function(){
     var file = layoutFileInput.files && layoutFileInput.files[0];
     if (!file) return;
-    if (currentRole === "saver" && !window.confirm("Webのマップを置き換えます。よろしいですか？")){
+    if (currentRole === "saver" && !window.confirm("Webのマップを置き換えます（読み込み前の状態は履歴から戻せます）。よろしいですか？")){
       layoutFileInput.value = "";
       return;
     }
     file.text().then(function(text){
+      var previousLayout = getLayout();
       applyLayout(JSON.parse(text), { source: "file" });
-      emitLocalChange("file");
+      emitLocalChange("file", previousLayout);
       layoutFileStatus.textContent = "配置を読み込みました";
     }).catch(function(error){
       layoutFileStatus.textContent = "読み込めません: " + error.message;

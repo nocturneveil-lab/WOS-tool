@@ -24,11 +24,20 @@ const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
 const SAVE_DEBOUNCE_MS = 1000;
 // このクライアントで最後に変更してからこの時間が経っていたら、保存の前に「編集開始前」の履歴を残す。
 const BEFORE_EDIT_INTERVAL_MS = 10 * 60 * 1000;
-// 自動の履歴（編集開始前・復元前）は最新のこの件数だけ残す。
+// 自動の履歴（名前付き保存以外）は最新のこの件数だけ残す。
 const AUTO_HISTORY_LIMIT = 30;
 const NAMED_HISTORY_LIMIT = 20;
 const HISTORY_NAME_MAX_LENGTH = 30;
-const HISTORY_KIND_LABELS = { "before-edit": "編集開始前", "before-restore": "復元前", named: "名前付き保存" };
+// named 以外はすべて自動の履歴として扱う（件数の上限も共通）。
+const HISTORY_KIND_LABELS = {
+  "before-edit": "編集開始前",
+  "before-restore": "復元前",
+  "before-reset": "リセット前",
+  "before-import": "読み込み前",
+  named: "名前付き保存"
+};
+// マップを丸ごと置き換える操作と、その直前に必ず残す履歴の種類。
+const REPLACE_HISTORY_KINDS = { reset: "before-reset", file: "before-import" };
 
 const mapApp = window.AllianceMapApp;
 
@@ -65,8 +74,8 @@ const state = {
   // ---- 履歴 ----
   // このクライアントで最後に変更した時刻
   lastLocalChangeAt: 0,
-  // 次の保存の前に「編集開始前」として残す、変更前のレイアウト
-  pendingBeforeEdit: null,
+  // 次のマップ保存の前に書き込む履歴（古い順）。[{kind, layout}]
+  pendingHistories: [],
   // プレビュー中の履歴と、プレビュー前のローカルの状態
   previewing: null,
   prePreviewLayout: null,
@@ -319,7 +328,7 @@ function processRemote() {
 }
 
 // ---- ローカルの変更 ----
-function handleLocalChange() {
+function handleLocalChange(kind, previousLayout) {
   if (state.role === "editor" || (state.role === "saver" && (state.showingFallback || !state.remote))) {
     // editor の変更と、Webの内容をもとにしていない saver の変更は保存しない。
     state.localDirty = true;
@@ -327,10 +336,14 @@ function handleLocalChange() {
     return;
   }
   if (state.role === "saver") {
-    // しばらくぶり（またはセッションで初めて）の変更なら、変更前のWebの状態を履歴に残す。
     const now = Date.now();
-    if (!state.pendingBeforeEdit && (!state.lastLocalChangeAt || now - state.lastLocalChangeAt >= BEFORE_EDIT_INTERVAL_MS)) {
-      state.pendingBeforeEdit = state.remote.layout;
+    const replaceKind = REPLACE_HISTORY_KINDS[kind];
+    if (replaceKind && previousLayout) {
+      // リセット・JSON読み込みは、10分ルールに関係なく直前の状態（未保存の変更を含む）を必ず残す。
+      state.pendingHistories.push({ kind: replaceKind, layout: buildSaveLayout(previousLayout) });
+    } else if (!state.lastLocalChangeAt || now - state.lastLocalChangeAt >= BEFORE_EDIT_INTERVAL_MS) {
+      // しばらくぶり（またはセッションで初めて）の変更なら、変更前のWebの状態を履歴に残す。
+      state.pendingHistories.push({ kind: "before-edit", layout: state.remote.layout });
     }
     state.lastLocalChangeAt = now;
     state.dirty = true;
@@ -349,6 +362,7 @@ function cancelScheduledSave() {
   window.clearTimeout(saveTimer);
   state.dirty = false;
   state.saveError = false;
+  state.pendingHistories = [];
 }
 function mapDocument(layout) {
   return {
@@ -369,16 +383,18 @@ async function saveNow() {
   if (state.remote.rev > state.baseRev) {
     // 後から保存した側が優先。上書きされる内容は「編集開始前」の履歴に残し、そこから復元できるようにする。
     showToast("他の人が先に更新しました。あなたの内容で上書きします");
-    if (!state.pendingBeforeEdit) state.pendingBeforeEdit = state.remote.layout;
+    if (!state.pendingHistories.some((entry) => entry.kind === "before-edit")) {
+      state.pendingHistories.unshift({ kind: "before-edit", layout: state.remote.layout });
+    }
   }
-  if (state.pendingBeforeEdit) {
-    const beforeEdit = state.pendingBeforeEdit;
-    state.pendingBeforeEdit = null;
-    // 履歴の書き込みはマップの保存を待たせない（失敗してもマップの保存は続ける）。
-    addHistory("before-edit", beforeEdit).catch((error) => console.error("before-edit history failed", error));
-  }
-  rememberSavedKey(layout);
   try {
+    // 履歴を書き込めてからマップを保存する。履歴に失敗したらマップも保存せず、再試行で両方やり直す。
+    while (state.pendingHistories.length) {
+      const entry = state.pendingHistories[0];
+      await addHistory(entry.kind, entry.layout);
+      state.pendingHistories.shift();
+    }
+    rememberSavedKey(layout);
     await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
     state.lastSavedAt = new Date();
   } catch (error) {
@@ -420,7 +436,7 @@ async function fetchHistory() {
     };
   });
 }
-// 自動の履歴（編集開始前・復元前）を新しい順に AUTO_HISTORY_LIMIT 件だけ残す。
+// 自動の履歴（名前付き保存以外）を新しい順に AUTO_HISTORY_LIMIT 件だけ残す。
 async function pruneAutoHistory() {
   const entries = await fetchHistory();
   const stale = entries.filter((entry) => entry.kind !== "named").slice(AUTO_HISTORY_LIMIT);
