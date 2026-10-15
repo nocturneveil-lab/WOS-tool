@@ -117,8 +117,10 @@
   .map-tool[data-type="city"]{--tool-color:#82b8e8;}
   .map-tool[data-type="bearTrap"]{--tool-color:#8fcda0;}
   .map-tool[data-type="allianceBuilding"]{--tool-color:#7d96ff;}
-  .map-tool[data-type="erase"]{--tool-color:transparent;}
-  .map-tool[data-type="erase"]::before{display:none;}
+  .map-tool[data-type="erase"],
+  .map-tool[data-type="select"]{--tool-color:transparent;}
+  .map-tool[data-type="erase"]::before,
+  .map-tool[data-type="select"]::before{display:none;}
   .map-tool[data-type="largeGatheringSite"]{--tool-color:#d5a783;}
   .map-tool[data-type="unavailable"]{--tool-color:#b8b8b8;}
   .map-tool.active{border-color:var(--text);box-shadow:0 0 0 1px var(--text);}
@@ -179,6 +181,63 @@
   .settings-color-row input[type="color"]{width:42px;height:32px;flex:0 0 42px;padding:2px;}
   .settings-color-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;}
   .settings-color-actions > span{flex:1 1 auto;}
+  /* ツール一覧の開閉ボタンと「⋯」メニュー（768px未満だけ使う） */
+  .tool-picker{display:flex;align-items:center;flex:0 0 auto;}
+  .map-tool.tool-picker-button{display:none;}
+  .more-menu-button{display:none;}
+  .more-menu{display:contents;}
+  .map-controls.menu-open{z-index:25;}
+  /* 選択中のオブジェクトの操作 */
+  .map-wrap.edit-mode .object-layer.selected{cursor:move;}
+  .selection-bar[hidden]{display:none;}
+  .selection-bar{
+    position:fixed;
+    left:50%;
+    bottom:16px;
+    transform:translateX(-50%);
+    z-index:6;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    max-width:calc(100vw - 32px);
+    padding:6px 6px 6px 12px;
+    border:1px solid var(--panel-border);
+    border-radius:999px;
+    background:var(--panel-bg);
+    color:var(--text);
+    font-size:13px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.2);
+  }
+  .selection-swatch{width:12px;height:12px;flex:0 0 auto;border-radius:50%;}
+  .selection-label{min-width:0;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+  .selection-bar button{flex:0 0 auto;padding:6px 10px;}
+  .selection-bar .danger{color:#dc3545;}
+  @media (max-width:767.98px){
+    .map-tool.tool-picker-button{display:flex;}
+    .tool-picker .map-tools,
+    .more-menu{
+      display:none;
+      position:fixed;
+      top:68px;
+      z-index:25;
+      flex-direction:column;
+      align-items:stretch;
+      gap:4px;
+      max-height:calc(100vh - 84px);
+      overflow-y:auto;
+      padding:8px;
+      border:1px solid var(--panel-border);
+      border-radius:8px;
+      background:var(--panel-bg);
+      box-shadow:0 8px 24px rgba(0,0,0,0.22);
+    }
+    .tool-picker .map-tools{left:8px;}
+    .more-menu{right:8px;}
+    .tool-picker.open .map-tools,
+    .more-menu.open{display:flex;}
+    .more-menu button{text-align:left;}
+    .more-menu-button{display:inline-flex;padding:7px 12px;font-weight:700;}
+  }
   @media (max-width:600px){
     .map-controls{justify-content:flex-start;gap:12px;padding:8px;}
     .size-control{gap:6px;}
@@ -296,8 +355,12 @@
     <input id="labelSizeInput" type="range" min="6" max="12" step="1" value="8">
     <output id="labelSizeOutput" for="labelSizeInput">8 px</output>
   </label>
-  <div class="map-tools" role="group" aria-label="配置する種類" data-role-ui="edit">
-    <button class="map-tool active" type="button" data-type="headquarters" aria-pressed="true">本部</button>
+  <div class="tool-picker" id="toolPicker" data-role-ui="edit">
+    <!-- 768px未満では、ツール一覧をこのボタンで開閉する -->
+    <button id="toolPickerButton" class="map-tool tool-picker-button" type="button" data-type="select" aria-haspopup="true" aria-expanded="false" aria-controls="toolList">選択</button>
+    <div class="map-tools" id="toolList" role="group" aria-label="ツール">
+    <button class="map-tool active" type="button" data-type="select" aria-pressed="true">選択</button>
+    <button class="map-tool" type="button" data-type="headquarters" aria-pressed="false">本部</button>
     <button class="map-tool" type="button" data-type="flag" aria-pressed="false">旗</button>
     <button class="map-tool" type="button" data-type="city" aria-pressed="false">都市</button>
     <button class="map-tool" type="button" data-type="bearTrap" aria-pressed="false">熊罠</button>
@@ -305,18 +368,23 @@
     <button class="map-tool" type="button" data-type="largeGatheringSite" aria-pressed="false">大型採集場</button>
     <button class="map-tool" type="button" data-type="unavailable" aria-pressed="false">配置不能</button>
     <button class="map-tool" type="button" data-type="erase" aria-pressed="false">消去</button>
+    </div>
   </div>
   <div class="map-actions">
     <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true" data-role-ui="edit">編集モード</button>
-    <button id="saveLayoutButton" type="button" data-role-ui="file">ファイルに保存</button>
-    <button id="loadLayoutButton" type="button" data-role-ui="file">読み込み</button>
-    <button id="exportPngButton" type="button">画像出力</button>
-    <button id="exportSvgButton" type="button">SVG出力</button>
+    <button id="undoAction" type="button" disabled data-role-ui="edit">ひとつ戻る</button>
+    <!-- 768px未満では「⋯」メニューにまとめる。768px以上では横に並べる（display:contents） -->
+    <button id="moreMenuButton" class="more-menu-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu" aria-label="その他の操作">⋯</button>
+    <div class="more-menu" id="moreMenu">
+      <button id="saveLayoutButton" type="button" data-role-ui="file">ファイルに保存</button>
+      <button id="loadLayoutButton" type="button" data-role-ui="file">読み込み</button>
+      <button id="exportPngButton" type="button">画像出力</button>
+      <button id="exportSvgButton" type="button">SVG出力</button>
+      <button id="openObjectColorSettings" type="button" data-role-ui="edit">設定</button>
+      <button id="resetMapAction" type="button" data-role-ui="edit">リセット</button>
+    </div>
     <input id="layoutFileInput" type="file" accept=".json,application/json">
     <span id="layoutFileStatus" class="layout-file-status" role="status" aria-live="polite"></span>
-    <button id="undoAction" type="button" disabled data-role-ui="edit">ひとつ戻る</button>
-    <button id="openObjectColorSettings" type="button" data-role-ui="edit">設定</button>
-    <button id="resetMapAction" type="button" data-role-ui="edit">リセット</button>
   </div>
   <div class="cloud-controls" id="cloudControls" hidden>
     <span id="cloudStatus" class="cloud-status" role="status" aria-live="polite"></span>
@@ -335,6 +403,13 @@
   <svg id="mapSvg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 <div class="coord-readout" id="coordReadout" role="status" aria-live="polite"></div>
+<div class="selection-bar" id="selectionBar" role="toolbar" aria-label="選択中のオブジェクト" hidden>
+  <span class="selection-swatch" id="selectionSwatch"></span>
+  <span class="selection-label" id="selectionLabel"></span>
+  <button id="renameSelection" type="button">名前変更</button>
+  <button id="deleteSelection" class="danger" type="button">削除</button>
+  <button id="clearSelection" type="button" aria-label="選択を解除">×</button>
+</div>
 
 <div class="city-dialog" id="cityNameDialog" hidden>
   <form id="cityNameForm">
@@ -579,8 +654,43 @@
   // Webに接続できないときは default-layout.json を読み込む。
   var classifications = {};
   var placements = [];
-  var activeTool = "headquarters";
+  var activeTool = "select";
   var editMode = false;
+  // 選択中のオブジェクト。配列の入れ替え（ひとつ戻る・Webの更新）をまたいで追えるよう「種類|アンカー」で持つ。
+  var selectedKey = null;
+  function placementKey(placement){ return placement.type + "|" + placement.anchor; }
+  function findTopPlacementAt(cellKey){
+    for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
+      if (placements[layerIndex].cells.indexOf(cellKey) !== -1) return placements[layerIndex];
+    }
+    return null;
+  }
+  function getSelectedPlacement(){
+    if (!selectedKey || !editMode) return null;
+    for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
+      if (placementKey(placements[layerIndex]) === selectedKey) return placements[layerIndex];
+    }
+    return null;
+  }
+  function setSelection(placement){
+    selectedKey = placement ? placementKey(placement) : null;
+    render();
+  }
+  // 重ね置き禁止：type を anchor に置いたとき、ignore 以外のオブジェクトと重ならないか。
+  function canOccupy(type, anchor, ignore){
+    var cells = getPlacementCells(type, anchor);
+    return !placements.some(function(placement){
+      return placement !== ignore && placement.cells.some(function(key){ return cells.indexOf(key) !== -1; });
+    });
+  }
+  var toastTimer = 0;
+  function showMessage(text){
+    var toast = document.getElementById("cloudToast");
+    toast.textContent = text;
+    toast.hidden = false;
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(function(){ toast.hidden = true; }, 3000);
+  }
   var hasUnsavedChanges = false;
   var localChangeListeners = [];
   // kind: "edit"（配置・移動・消去・名前変更）、"undo"、"reset"、"settings"、"file"
@@ -639,19 +749,34 @@
       placements: JSON.parse(JSON.stringify(placements)),
       panX: panX,
       panY: panY,
-      zoom: zoom
+      zoom: zoom,
+      selectedKey: selectedKey
     });
     if (undoStack.length > 50) undoStack.shift();
     updateUndoButton();
+  }
+  function shiftedAnchor(anchor, deltaCol, deltaRow){
+    var parts = anchor.split("_");
+    return (parseInt(parts[0], 10) + deltaCol) + "_" + (parseInt(parts[1], 10) + deltaRow);
+  }
+  function deleteSelectedPlacement(){
+    var placement = getSelectedPlacement();
+    if (!placement) return;
+    rememberMapState();
+    removePlacementAt(placements.indexOf(placement));
+    selectedKey = null;
+    markLayoutChanged();
+    render();
   }
   function movePlacement(placement, deltaCol, deltaRow){
     var placementIndex = placements.indexOf(placement);
     if (placementIndex === -1 || (!deltaCol && !deltaRow)) return;
     rememberMapState();
+    var wasSelected = selectedKey === placementKey(placement);
     var previousCells = placement.cells.slice();
-    var anchor = placement.anchor.split("_");
-    placement.anchor = (parseInt(anchor[0], 10) + deltaCol) + "_" + (parseInt(anchor[1], 10) + deltaRow);
+    placement.anchor = shiftedAnchor(placement.anchor, deltaCol, deltaRow);
     placement.cells = getPlacementCells(placement.type, placement.anchor);
+    if (wasSelected) selectedKey = placementKey(placement);
     placements.splice(placementIndex, 1);
     placements.push(placement);
     var changedCells = {};
@@ -668,6 +793,7 @@
     panX = previous.panX;
     panY = previous.panY;
     zoom = previous.zoom;
+    selectedKey = previous.selectedKey || null;
     updateGridMetrics();
     markLayoutChanged("undo");
     updateZoomReadout();
@@ -945,19 +1071,21 @@
       eraseAt(key);
       return;
     }
-    if (activeTool === "city" || activeTool === "allianceBuilding"){
-      var topPlacement = null;
-      for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
-        if (placements[layerIndex].cells.indexOf(key) !== -1){
-          topPlacement = placements[layerIndex];
-          break;
-        }
-      }
-      if (topPlacement && isNameRequired(topPlacement.type)) openRenameDialog(topPlacement);
-      else openNewNameDialog(key);
+    var target = findTopPlacementAt(key);
+    // 選択ツール：オブジェクトを選択、空きマスで選択解除。
+    // 配置ツール：既存オブジェクトの上なら配置せずにそれを選択する（重ね置き禁止）。
+    if (activeTool === "select" || target){
+      setSelection(target);
       return;
     }
-    placeStructure(activeTool, key, "");
+    if (!canOccupy(activeTool, key, null)){
+      showMessage("ほかのオブジェクトと重なるため配置できません");
+      return;
+    }
+    if (selectedKey) setSelection(null);
+    // 配置ツールは配置後も選んだまま（連続配置のため）。
+    if (isNameRequired(activeTool)) openNewNameDialog(key);
+    else placeStructure(activeTool, key, "");
   }
   var cityNameDialog = document.getElementById("cityNameDialog");
   var cityNameForm = document.getElementById("cityNameForm");
@@ -1146,19 +1274,104 @@
   editModeToggle.addEventListener("click", function(){
     if (currentRole === "viewer" || readOnly) return;
     editMode = !editMode;
+    if (!editMode) selectedKey = null;
     updateEditModeButton();
     updateMapCursor();
+    render();
   });
-  document.querySelectorAll(".map-tool").forEach(function(button){
+  // ---- ツール一覧の開閉（768px未満）と「⋯」メニュー ----
+  var mapControls = document.querySelector(".map-controls");
+  var toolPicker = document.getElementById("toolPicker");
+  var toolPickerButton = document.getElementById("toolPickerButton");
+  var moreMenu = document.getElementById("moreMenu");
+  var moreMenuButton = document.getElementById("moreMenuButton");
+  var toolButtons = Array.from(document.querySelectorAll("#toolList .map-tool"));
+  function setMenuOpen(menu, toggle, open){
+    menu.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    mapControls.classList.toggle("menu-open", toolPicker.classList.contains("open") || moreMenu.classList.contains("open"));
+  }
+  function closeMenus(){
+    setMenuOpen(toolPicker, toolPickerButton, false);
+    setMenuOpen(moreMenu, moreMenuButton, false);
+  }
+  function isMenuOpen(){
+    return toolPicker.classList.contains("open") || moreMenu.classList.contains("open");
+  }
+  toolPickerButton.addEventListener("click", function(){
+    var open = !toolPicker.classList.contains("open");
+    closeMenus();
+    setMenuOpen(toolPicker, toolPickerButton, open);
+  });
+  moreMenuButton.addEventListener("click", function(){
+    var open = !moreMenu.classList.contains("open");
+    closeMenus();
+    setMenuOpen(moreMenu, moreMenuButton, open);
+  });
+  // メニューの項目を選んだら閉じる（各ボタンの処理はそれぞれのリスナーで行う）。
+  moreMenu.addEventListener("click", function(event){
+    if (event.target.closest("button")) closeMenus();
+  });
+  // メニューの外を押したら閉じる。マップを押した場合は、その操作（配置など）はしない。
+  document.addEventListener("pointerdown", function(event){
+    if (!isMenuOpen() || event.target.closest(".tool-picker, .more-menu, .more-menu-button")) return;
+    if (svg.contains(event.target)) suppressClickUntil = Date.now() + 400;
+    closeMenus();
+  }, true);
+  document.addEventListener("keydown", function(event){
+    if (event.key === "Escape" && isMenuOpen()) closeMenus();
+  });
+  window.addEventListener("resize", function(){
+    if (window.innerWidth >= 768) closeMenus();
+  });
+  function updateToolPicker(){
+    var activeButton = toolButtons.filter(function(button){ return button.getAttribute("data-type") === activeTool; })[0];
+    toolPickerButton.setAttribute("data-type", activeTool);
+    toolPickerButton.textContent = activeButton ? activeButton.textContent : "";
+    if (TYPE_COLORS[activeTool]) toolPickerButton.style.setProperty("--tool-color", TYPE_COLORS[activeTool]);
+    else toolPickerButton.style.removeProperty("--tool-color");
+  }
+  toolButtons.forEach(function(button){
     button.addEventListener("click", function(){
+      closeMenus();
       if (!editMode) return;
       activeTool = button.getAttribute("data-type");
-      document.querySelectorAll(".map-tool").forEach(function(tool){
+      toolButtons.forEach(function(tool){
         var selected = tool === button;
         tool.classList.toggle("active", selected);
         tool.setAttribute("aria-pressed", selected ? "true" : "false");
       });
+      updateToolPicker();
     });
+  });
+  updateToolPicker();
+  // ---- 選択中のオブジェクトの操作 ----
+  var selectionBar = document.getElementById("selectionBar");
+  var selectionSwatch = document.getElementById("selectionSwatch");
+  var selectionLabel = document.getElementById("selectionLabel");
+  function updateSelectionBar(placement){
+    selectionBar.hidden = !placement;
+    if (!placement) return;
+    selectionSwatch.style.background = TYPE_COLORS[placement.type];
+    var label = getPlacementLabel(placement).replace(/\n/g, " ");
+    selectionLabel.textContent = TYPE_LABELS[placement.type] + (label && label !== TYPE_LABELS[placement.type] ? "：" + label : "");
+  }
+  document.getElementById("renameSelection").addEventListener("click", function(){
+    var placement = getSelectedPlacement();
+    if (placement) openRenameDialog(placement);
+  });
+  document.getElementById("deleteSelection").addEventListener("click", deleteSelectedPlacement);
+  document.getElementById("clearSelection").addEventListener("click", function(){ setSelection(null); });
+  document.addEventListener("keydown", function(event){
+    if (!selectedKey || isBusy() || !cityNameDialog.hidden) return;
+    var tag = event.target && event.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (event.key === "Delete" || event.key === "Backspace"){
+      event.preventDefault();
+      deleteSelectedPlacement();
+    }else if (event.key === "Escape"){
+      setSelection(null);
+    }
   });
   updateEditModeButton();
   updateMapCursor();
@@ -1213,7 +1426,9 @@
         longPressState.fired = true;
         suppressClickUntil = Date.now() + 60000;
         dragState = null;
+        objectDragState = null;
         mapWrap.classList.remove("dragging");
+        setSelection(placement);
         openRenameDialog(placement);
       }, LONG_PRESS_MS)
     };
@@ -1224,18 +1439,31 @@
     if (longPressState.fired) suppressClickUntil = Date.now() + 400;
     longPressState = null;
   }
-  function startObjectDrag(event, placement, objectLayer){
-    if (!editMode) return;
-    if (event.button !== 0 || event.ctrlKey || event.pointerType === "touch") return;
-    event.stopPropagation();
+  // 選択中のオブジェクトだけドラッグで移動できる（マウス・タッチ共通）。
+  // それ以外の場所から始めたドラッグはマップのスクロールになる。
+  function startObjectDrag(event, placement){
+    if (!editMode || event.button !== 0 || event.ctrlKey || placementKey(placement) !== selectedKey) return;
     objectDragState = {
       pointerId: event.pointerId,
       placement: placement,
-      objectLayer: objectLayer,
       startX: event.clientX,
       startY: event.clientY,
       moved: false
     };
+  }
+  function cancelObjectDrag(){
+    if (!objectDragState) return;
+    var wasMoved = objectDragState.moved;
+    objectDragState = null;
+    mapWrap.classList.remove("dragging");
+    if (wasMoved) render();
+  }
+  // ドラッグ中は、選択中のオブジェクトとその名前を一緒に動かして見せる。
+  function setSelectedNodesTransform(transform){
+    svg.querySelectorAll(".object-layer.selected, .object-label.selected").forEach(function(node){
+      if (transform) node.setAttribute("transform", transform);
+      else node.removeAttribute("transform");
+    });
   }
   function zoomAt(nextZoom, pointX, pointY){
     nextZoom = Math.max(0.25, Math.min(4, nextZoom));
@@ -1275,17 +1503,20 @@
         worldY: (center.y - panY) / zoom
       };
       dragState = null;
+      cancelObjectDrag();
       cancelLongPress();
       return;
     }
     if (event.button !== 0) return;
+    // 選択中のオブジェクトの上で押した場合は、オブジェクトの移動（objectDragState）になる。
+    if (objectDragState && objectDragState.pointerId === event.pointerId) return;
     dragState = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       panX: panX,
       panY: panY,
-      canPan: event.pointerType !== "mouse" || !editMode || event.ctrlKey,
+      canPan: true,
       moved: false
     };
     if (dragState.canPan && !editMode) {
@@ -1298,6 +1529,10 @@
         Math.abs(event.clientX - longPressState.startX) + Math.abs(event.clientY - longPressState.startY) > 10){
       cancelLongPress();
     }
+    if (activePointers[event.pointerId]){
+      activePointers[event.pointerId].x = event.clientX;
+      activePointers[event.pointerId].y = event.clientY;
+    }
     if (objectDragState && event.pointerId === objectDragState.pointerId){
       var objectDx = event.clientX - objectDragState.startX;
       var objectDy = event.clientY - objectDragState.startY;
@@ -1306,14 +1541,10 @@
         var objectBounds = svg.getBoundingClientRect();
         var localDx = objectDx * VIEW_W / objectBounds.width / zoom;
         var localDy = objectDy * VIEW_H / objectBounds.height / zoom;
-        objectDragState.objectLayer.setAttribute("transform", "translate(" + localDx + " " + localDy + ")");
+        setSelectedNodesTransform("translate(" + localDx + " " + localDy + ")");
         mapWrap.classList.add("dragging");
       }
       return;
-    }
-    if (activePointers[event.pointerId]){
-      activePointers[event.pointerId].x = event.clientX;
-      activePointers[event.pointerId].y = event.clientY;
     }
     if (pinchState && Object.keys(activePointers).length >= 2){
       var pinchPointers = Object.keys(activePointers).slice(0, 2).map(function(id){ return activePointers[id]; });
@@ -1341,6 +1572,7 @@
   });
   function finishDrag(event){
     if (longPressState && event.pointerId === longPressState.pointerId) cancelLongPress();
+    delete activePointers[event.pointerId];
     if (objectDragState && event.pointerId === objectDragState.pointerId){
       var objectDrag = objectDragState;
       objectDragState = null;
@@ -1353,12 +1585,16 @@
         var deltaRow = Math.round((dy / HH - dx / HW) / 2);
         suppressNextClick = true;
         window.setTimeout(function(){ suppressNextClick = false; }, 0);
-        if (deltaCol || deltaRow) movePlacement(objectDrag.placement, deltaCol, deltaRow);
-        else render();
+        var placement = objectDrag.placement;
+        if (event.type === "pointercancel" || (!deltaCol && !deltaRow)) render();
+        else if (!canOccupy(placement.type, shiftedAnchor(placement.anchor, deltaCol, deltaRow), placement)){
+          showMessage("ほかのオブジェクトと重なるため移動できません");
+          render();
+        }
+        else movePlacement(placement, deltaCol, deltaRow);
       }
       return;
     }
-    delete activePointers[event.pointerId];
     if (pinchState && Object.keys(activePointers).length < 2) pinchState = null;
     if (!dragState || event.pointerId !== dragState.pointerId) return;
     if (dragState.moved){
@@ -1473,11 +1709,14 @@
       }
     }
     var labelLayer = el("g", {class: "object-label-layer", "pointer-events": "none"});
+    var selectedPlacement = getSelectedPlacement();
+    if (!selectedPlacement) selectedKey = null;
     placements.forEach(function(placement, layerIndex){
       var size = PLACEMENT_SIZES[placement.type];
       var footprint = placementPolygon(placement);
+      var isSelected = placement === selectedPlacement;
       var objectLayer = el("g", {
-        class: "object-layer",
+        class: "object-layer" + (isSelected ? " selected" : ""),
         "data-layer-id": "layer-" + layerIndex + "-" + placement.type + "-" + placement.anchor,
         "data-object-type": placement.type,
         "data-anchor": placement.anchor,
@@ -1499,15 +1738,28 @@
         class: placement.type === "city" ? "city-fill" : "object-shape"
       });
       objectLayer.appendChild(shape);
+      if (isSelected){
+        objectLayer.appendChild(el("polygon", {
+          points: footprint,
+          fill: "rgba(31,111,214,0.12)",
+          stroke: "#1f6fd6",
+          "stroke-width": 2.5,
+          "stroke-linejoin": "round",
+          "vector-effect": "non-scaling-stroke",
+          "pointer-events": "none",
+          class: "selection-outline"
+        }));
+      }
       objectLayer.addEventListener("pointerdown", function(event){
         if (event.pointerType === "touch") startLongPress(event, placement);
         if (event.ctrlKey || event.metaKey) return;
-        startObjectDrag(event, placement, objectLayer);
+        startObjectDrag(event, placement);
       });
       objectLayer.addEventListener("contextmenu", function(event){
         if (!editMode) return;
         event.preventDefault();
         if (Date.now() < suppressClickUntil) return;
+        setSelection(placement);
         openRenameDialog(placement);
       });
       objectLayer.addEventListener("click", function(event){
@@ -1541,7 +1793,7 @@
           fill: "#222222",
           "pointer-events": "none",
           "data-center-y": center.y,
-          class: "object-label",
+          class: "object-label" + (isSelected ? " selected" : ""),
           style: "paint-order:stroke;stroke:#ffffff;stroke-width:" + (baseFontSize * 0.22) + "px;stroke-linejoin:round;"
         };
         if (!isBearTrap && lines.length === 1) labelAttrs["data-fit-width"] = allowedWidth;
@@ -1587,6 +1839,7 @@
       class: "map-center-point"
     }));
     svg.appendChild(gridLayer);
+    updateSelectionBar(selectedPlacement);
     Array.from(gridLayer.querySelectorAll(".object-label")).forEach(function(labelText){
       var requestedSize = parseFloat(labelText.getAttribute("font-size"));
       var allowedWidth = parseFloat(labelText.getAttribute("data-fit-width"));
@@ -1631,7 +1884,7 @@
     exportSvg.appendChild(el("rect", { x: minX, y: minY, width: width, height: height, fill: "#ffffff" }));
     var content = gridLayer.cloneNode(true);
     content.removeAttribute("transform");
-    Array.from(content.querySelectorAll(".map-center-point")).forEach(function(node){ node.remove(); });
+    Array.from(content.querySelectorAll(".map-center-point, .selection-outline")).forEach(function(node){ node.remove(); });
     exportSvg.appendChild(content);
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(exportSvg);
   }
@@ -1648,6 +1901,12 @@
       editMode = false;
       closeNameDialog();
       closeObjectColorDialog();
+      closeMenus();
+      cancelObjectDrag();
+      if (selectedKey){
+        selectedKey = null;
+        render();
+      }
     }
     updateEditModeButton();
     updateMapCursor();
