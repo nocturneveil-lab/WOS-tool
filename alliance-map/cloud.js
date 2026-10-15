@@ -183,11 +183,13 @@ function stableStringify(value) {
   return JSON.stringify(value === undefined ? null : value);
 }
 // 表示位置（view.center / zoom）を除いた中身の比較用キー。
+// 受信したデータは applyLayout で検証する前にここを通るので、形が壊れていても例外を出さない。
 function layoutContentKey(layout) {
-  const view = layout.view || {};
+  const view = layout.view && typeof layout.view === "object" ? layout.view : {};
+  const placements = Array.isArray(layout.placements) ? layout.placements : [];
   return stableStringify({
     classifications: layout.classifications || {},
-    placements: (layout.placements || []).map((item) => [item.type, item.anchor, item.name || ""]),
+    placements: placements.map((item) => item && typeof item === "object" ? [item.type, item.anchor, item.name || ""] : null),
     objectColors: layout.objectColors || {},
     bearTrapLabelSize: layout.bearTrapLabelSize,
     mapCols: view.mapCols,
