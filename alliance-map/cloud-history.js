@@ -1,6 +1,6 @@
 // 履歴：一覧・プレビュー・復元・名前付き保存。
-import { mapApp, state, el, sdk, mapRef, historyRef, showToast, formatDateTime, pickLayout, buildSaveLayout, rememberSavedKey, mapDocument } from "./cloud-shared.js";
-import { refreshUi, processRemote, scheduleSave, cancelScheduledSave, revertToLatest } from "./cloud-sync.js";
+import { mapApp, state, el, sdk, historyRef, createButton, closeDialogOnDismiss, setMessage, showToast, formatDateTime, pickLayout, buildSaveLayout } from "./cloud-shared.js";
+import { refreshUi, processRemote, scheduleSave, cancelScheduledSave, revertToLatest, writeMap } from "./cloud-sync.js";
 
 // 自動の履歴（名前付き保存以外）は最新のこの件数だけ残す。
 const AUTO_HISTORY_LIMIT = 30;
@@ -51,15 +51,7 @@ async function pruneAutoHistory() {
   await Promise.all(stale.map((entry) => sdk.deleteDoc(sdk.doc(historyRef, entry.id))));
 }
 function setHistoryMessage(text, isError) {
-  el.historyMessage.textContent = text;
-  el.historyMessage.classList.toggle("error", !!isError);
-}
-function historyButton(label, onClick) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
+  setMessage(el.historyMessage, text, isError);
 }
 function renderHistoryList() {
   // 名前付き保存を先頭にまとめ、そのあとに自動の履歴を新しい順に並べる。
@@ -79,12 +71,12 @@ function renderHistoryList() {
     info.append(title, meta);
     const actions = document.createElement("div");
     actions.className = "history-item-actions";
-    actions.append(historyButton("プレビュー", () => startPreview(entry)));
+    actions.append(createButton("プレビュー", () => startPreview(entry)));
     if (state.role === "saver") {
-      actions.append(historyButton("復元", () => restoreHistory(entry)));
+      actions.append(createButton("復元", () => restoreHistory(entry)));
       if (entry.kind === "named") {
-        actions.append(historyButton("名前変更", () => renameHistory(entry)));
-        actions.append(historyButton("削除", () => deleteHistory(entry)));
+        actions.append(createButton("名前変更", () => renameHistory(entry)));
+        actions.append(createButton("削除", () => deleteHistory(entry)));
       }
     }
     item.append(info, actions);
@@ -166,11 +158,7 @@ export async function restoreHistory(entry) {
   refreshUi();
   try {
     await addHistory("before-restore", state.remote.layout);
-    rememberSavedKey(layout);
-    const revBeforeRestore = state.remote.rev;
-    await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
-    state.baseRev = Math.max(state.baseRev, revBeforeRestore + 1);
-    state.lastSavedAt = new Date();
+    await writeMap(layout);
     showToast("復元しました");
   } catch (error) {
     console.error("history restore failed", error);
@@ -239,12 +227,7 @@ async function deleteHistory(entry) {
 export function setupHistoryUi() {
   el.historyButton.addEventListener("click", openHistoryDialog);
   document.getElementById("closeHistory").addEventListener("click", closeHistoryDialog);
-  el.historyDialog.addEventListener("click", (event) => {
-    if (event.target === el.historyDialog) closeHistoryDialog();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !el.historyDialog.hidden) closeHistoryDialog();
-  });
+  closeDialogOnDismiss(el.historyDialog, closeHistoryDialog);
   el.saveNamedButton.addEventListener("click", saveNamedHistory);
 }
 

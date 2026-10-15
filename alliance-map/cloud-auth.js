@@ -1,5 +1,5 @@
 // ログイン・ログアウト・権限の判定・合言葉の変更。
-import { mapApp, state, el, sdk, auth, iconElement, labelElements, showToast, setSettingsMessage } from "./cloud-shared.js";
+import { mapApp, state, el, sdk, auth, iconElement, labelElements, closeDialogOnDismiss, clearLocalDirty, showToast, setSettingsMessage } from "./cloud-shared.js";
 import { refreshUi, processRemote, cancelScheduledSave, revertToLatest, hasUnsavedWork } from "./cloud-sync.js";
 import { closeHistoryDialog, endPreview } from "./cloud-history.js";
 
@@ -62,10 +62,7 @@ export function handleAuthChanged(user) {
     // ログアウトしたら、保存されていない変更を捨ててWebの最新に戻す。
     revertToLatest();
   }
-  if (next.role === "viewer") {
-    state.localDirty = false;
-    state.remoteChangedWhileDirty = false;
-  }
+  if (next.role === "viewer") clearLocalDirty();
   mapApp.setRole(next.role);
   refreshUi();
   processRemote();
@@ -154,14 +151,8 @@ export function setupLoginUi() {
   });
   el.loginForm.addEventListener("submit", submitLogin);
   document.getElementById("cancelLogin").addEventListener("click", closeLoginDialog);
-  el.loginDialog.addEventListener("click", (event) => {
-    if (event.target === el.loginDialog) closeLoginDialog();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !el.loginDialog.hidden) closeLoginDialog();
-  });
+  closeDialogOnDismiss(el.loginDialog, closeLoginDialog);
   el.changePasswordButton.addEventListener("click", changePassword);
-
 }
 
 async function changePassword() {

@@ -137,6 +137,27 @@ export function labelElements(long, short) {
   shortLabel.textContent = short || long;
   return [longLabel, shortLabel];
 }
+export function createButton(label, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+// ダイアログの外側（背景）を押すか Esc キーで閉じる。
+export function closeDialogOnDismiss(dialog, close) {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !dialog.hidden) close();
+  });
+}
+// ダイアログ内のメッセージ欄（isError で赤字）。
+export function setMessage(node, text, isError) {
+  node.textContent = text;
+  node.classList.toggle("error", !!isError);
+}
 // options: { short, icon, error, action:{label, onClick} }
 // action があるときは、表示全体を押せるボタンにする（狭い画面でも押しやすく、幅も増えない）。
 export function setCloudStatus(text, options) {
@@ -158,13 +179,7 @@ export function setCloudStatus(text, options) {
 // actions: [{label, onClick}]
 export function showBanner(text, actions, variant) {
   el.bannerText.textContent = text;
-  el.bannerActions.replaceChildren(...(actions || []).map((action) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = action.label;
-    button.addEventListener("click", action.onClick);
-    return button;
-  }));
+  el.bannerActions.replaceChildren(...(actions || []).map((action) => createButton(action.label, action.onClick)));
   el.banner.className = "cloud-banner" + (variant ? " " + variant : "");
   el.banner.hidden = false;
 }
@@ -248,22 +263,14 @@ export function buildSaveLayout(baseLayout) {
   };
   return layout;
 }
-export function rememberSavedKey(layout) {
-  state.recentSavedKeys.push(layoutContentKey(layout));
-  if (state.recentSavedKeys.length > 10) state.recentSavedKeys.shift();
+// ローカルの変更（Webに保存されない変更）を、なかったことにする。
+export function clearLocalDirty() {
+  state.localDirty = false;
+  state.remoteChangedWhileDirty = false;
 }
 
-export function mapDocument(layout) {
-  return {
-    ...layout,
-    updatedAt: sdk.serverTimestamp(),
-    updatedBy: state.account
-  };
-}
-
-// ---- 合言葉の変更（saver） ----
+// 設定ダイアログの「初期表示」「合言葉の変更」のメッセージ欄。
 export function setSettingsMessage(text, isError) {
-  el.settingsCloudMessage.textContent = text;
-  el.settingsCloudMessage.classList.toggle("error", !!isError);
+  setMessage(el.settingsCloudMessage, text, isError);
 }
 

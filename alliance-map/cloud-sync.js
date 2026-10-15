@@ -1,5 +1,5 @@
 // Web のマップの受信と適用、保存可の自動保存、ヘッダーの保存状態と帯の表示。
-import { mapApp, state, sdk, mapRef, setCloudStatus, showBanner, hideBanner, showToast, formatTime, formatDateTime, pickLayout, layoutContentKey, isSameAsLocal, applyRemoteLayout, buildSaveLayout, rememberSavedKey, mapDocument, setSettingsMessage } from "./cloud-shared.js";
+import { mapApp, state, sdk, mapRef, setCloudStatus, showBanner, hideBanner, showToast, formatTime, formatDateTime, pickLayout, layoutContentKey, isSameAsLocal, applyRemoteLayout, buildSaveLayout, clearLocalDirty, setSettingsMessage } from "./cloud-shared.js";
 import { historyTitle, addHistory, endPreview, restoreHistory } from "./cloud-history.js";
 import { refreshRole } from "./cloud-auth.js";
 
@@ -17,8 +17,7 @@ export function revertToLatest() {
   const latest = useRemote ? state.remote.layout : state.fallbackLayout;
   if (latest && !applyRemoteLayout(latest, false)) return;
   if (useRemote) state.baseRev = state.remote.rev;
-  state.localDirty = false;
-  state.remoteChangedWhileDirty = false;
+  clearLocalDirty();
   refreshUi();
 }
 
@@ -92,8 +91,7 @@ export function processRemote() {
   if (isSameAsLocal(state.remote.layout)) {
     state.baseRev = Math.max(state.baseRev, state.remote.rev);
     if (state.localDirty) {
-      state.localDirty = false;
-      state.remoteChangedWhileDirty = false;
+      clearLocalDirty();
       refreshUi();
     }
     return;
@@ -141,6 +139,27 @@ export function handleLocalChange(kind, previousLayout) {
 }
 
 // ---- 自動保存（saver） ----
+function mapDocument(layout) {
+  return {
+    ...layout,
+    updatedAt: sdk.serverTimestamp(),
+    updatedBy: state.account
+  };
+}
+// 自分が保存した内容のキーを覚える（届いたスナップショットが自分の保存の反映かを見分けるため）。
+function rememberSavedKey(layout) {
+  state.recentSavedKeys.push(layoutContentKey(layout));
+  if (state.recentSavedKeys.length > 10) state.recentSavedKeys.shift();
+}
+// maps/main をこのレイアウトで上書きする（自動保存・履歴からの復元）。
+export async function writeMap(layout) {
+  rememberSavedKey(layout);
+  const revBeforeSave = state.remote.rev;
+  await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
+  // 保存できた時点で、Web の rev は保存前に見ていた値より必ず大きい。
+  state.baseRev = Math.max(state.baseRev, revBeforeSave + 1);
+  state.lastSavedAt = new Date();
+}
 let saveTimer = 0;
 export function scheduleSave() {
   window.clearTimeout(saveTimer);
@@ -176,12 +195,7 @@ async function saveNow() {
       await addHistory(entry.kind, entry.layout);
       state.pendingHistories.shift();
     }
-    rememberSavedKey(layout);
-    const revBeforeSave = state.remote.rev;
-    await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
-    // 保存できた時点で、Web の rev は保存前に見ていた値より必ず大きい。
-    state.baseRev = Math.max(state.baseRev, revBeforeSave + 1);
-    state.lastSavedAt = new Date();
+    await writeMap(layout);
   } catch (error) {
     console.error("map save failed", error);
     state.saveError = true;
@@ -200,8 +214,7 @@ async function registerMap() {
   const layout = buildSaveLayout();
   try {
     await sdk.setDoc(mapRef, { ...mapDocument(layout), rev: 1 });
-    state.localDirty = false;
-    state.remoteChangedWhileDirty = false;
+    clearLocalDirty();
     showToast("Webに登録しました");
   } catch (error) {
     console.error("map register failed", error);
@@ -263,7 +276,6 @@ export function handleSnapshot(snapshot) {
     key,
     rev,
     own,
-    updatedBy: data.updatedBy || "",
     updatedAt: data.updatedAt && typeof data.updatedAt.toDate === "function" ? data.updatedAt.toDate() : null
   };
   if (!state.initialShown) {
