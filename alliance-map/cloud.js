@@ -325,6 +325,9 @@ function processRemote() {
     if (state.dirty || state.saving || state.saveError) return;
     // 自分が先に保存した古い内容の反映は無視する（新しい保存の反映がこのあと届く）。
     if (state.remote.own) return;
+    // 自分の保存より前の版は適用しない。保存が完了した通知が、その反映（スナップショット）より先に
+    // 届くことがあり、そのときに保存前の内容を適用すると自分の変更が消えてしまうため。
+    if (state.remote.rev <= state.baseRev) return;
   }
   if (applyRemoteLayout(state.remote.layout, false)) state.baseRev = state.remote.rev;
 }
@@ -397,7 +400,10 @@ async function saveNow() {
       state.pendingHistories.shift();
     }
     rememberSavedKey(layout);
+    const revBeforeSave = state.remote.rev;
     await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
+    // 保存できた時点で、Web の rev は保存前に見ていた値より必ず大きい。
+    state.baseRev = Math.max(state.baseRev, revBeforeSave + 1);
     state.lastSavedAt = new Date();
   } catch (error) {
     console.error("map save failed", error);
@@ -561,7 +567,9 @@ async function restoreHistory(entry) {
   try {
     await addHistory("before-restore", state.remote.layout);
     rememberSavedKey(layout);
+    const revBeforeRestore = state.remote.rev;
     await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
+    state.baseRev = Math.max(state.baseRev, revBeforeRestore + 1);
     state.lastSavedAt = new Date();
     showToast("復元しました");
   } catch (error) {
