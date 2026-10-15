@@ -676,6 +676,10 @@
   undoButton.addEventListener("click", undoMapAction);
   document.getElementById("resetMapAction").addEventListener("click", function(){
     if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * zoomBase) && panY === (VIEW_H / 2 - CY * zoomBase) && zoom === zoomBase) return;
+    var resetMessage = currentRole === "saver" ?
+      "マップの配置をすべて消去します。\nWeb上のマップが全員分消えます（直後なら「ひとつ戻る」で戻せます）。よろしいですか？" :
+      "マップの配置をすべて消去します。よろしいですか？";
+    if (!window.confirm(resetMessage)) return;
     rememberMapState();
     placements = [];
     classifications = {};
