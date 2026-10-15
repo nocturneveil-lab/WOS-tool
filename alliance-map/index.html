@@ -230,6 +230,17 @@
   .settings-cloud .login-note{margin:6px 0 14px;}
   .settings-cloud-row{display:flex;flex-wrap:wrap;gap:6px;}
   .settings-cloud-row input{flex:1 1 140px;min-width:0;padding:6px 8px;border:1px solid var(--panel-border);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;}
+  .history-panel{width:min(520px,100%);padding:18px;background:var(--panel-bg);color:var(--text);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,0.22);}
+  .history-named{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
+  .history-named input{flex:1 1 160px;min-width:0;padding:6px 8px;border:1px solid var(--panel-border);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;}
+  .history-list{margin:8px 0 0;padding:0;list-style:none;}
+  .history-item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:8px 0;border-bottom:1px solid var(--panel-border);}
+  .history-item-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .history-item-title{font-size:13px;font-weight:600;overflow-wrap:anywhere;}
+  .history-item-meta{color:var(--text-sub);font-size:11px;}
+  .history-item-actions{display:flex;flex-wrap:wrap;gap:4px;}
+  .history-item-actions button{padding:4px 8px;font-size:12px;}
+  .history-empty{padding:12px 0;color:var(--text-sub);font-size:13px;}
   .cloud-banner[hidden]{display:none;}
   .cloud-banner{
     position:fixed;
@@ -309,6 +320,7 @@
   </div>
   <div class="cloud-controls" id="cloudControls" hidden>
     <span id="cloudStatus" class="cloud-status" role="status" aria-live="polite"></span>
+    <button id="historyButton" type="button" hidden>履歴</button>
     <span id="roleBadge" class="role-badge" data-role="viewer">閲覧</span>
     <button id="loginButton" type="button">ログイン</button>
   </div>
@@ -416,6 +428,21 @@
       <button id="loginSubmit" type="submit">ログイン</button>
     </div>
   </form>
+</div>
+
+<div class="city-dialog" id="historyDialog" role="dialog" aria-modal="true" aria-labelledby="historyTitle" hidden>
+  <div class="settings-form history-panel">
+    <h2 id="historyTitle">履歴</h2>
+    <div class="history-named" data-role-ui="saver">
+      <input id="historyNameInput" type="text" maxlength="30" autocomplete="off" placeholder="名前（30文字まで）">
+      <button id="saveNamedButton" type="button">現在の状態に名前を付けて保存</button>
+    </div>
+    <p id="historyMessage" class="cloud-message" role="status" aria-live="polite"></p>
+    <ul id="historyList" class="history-list"></ul>
+    <div class="city-dialog-actions">
+      <button id="closeHistory" type="button">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <script>

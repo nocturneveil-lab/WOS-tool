@@ -22,6 +22,13 @@ const SDK_BASE = "https://www.gstatic.com/firebasejs/13.0.0/";
 const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
 // 最後の変更からこの時間が経ったら、まとめてWebに保存する。
 const SAVE_DEBOUNCE_MS = 1000;
+// このクライアントで最後に変更してからこの時間が経っていたら、保存の前に「編集開始前」の履歴を残す。
+const BEFORE_EDIT_INTERVAL_MS = 10 * 60 * 1000;
+// 自動の履歴（編集開始前・復元前）は最新のこの件数だけ残す。
+const AUTO_HISTORY_LIMIT = 30;
+const NAMED_HISTORY_LIMIT = 20;
+const HISTORY_NAME_MAX_LENGTH = 30;
+const HISTORY_KIND_LABELS = { "before-edit": "編集開始前", "before-restore": "復元前", named: "名前付き保存" };
 
 const mapApp = window.AllianceMapApp;
 
@@ -54,13 +61,23 @@ const state = {
   // ローカルの内容のもとになった maps/main の rev（衝突の検知に使う）
   baseRev: 0,
   // 自分が保存した内容のキー（自分の書き込みの反映を見分けるため。古い順）
-  recentSavedKeys: []
+  recentSavedKeys: [],
+  // ---- 履歴 ----
+  // このクライアントで最後に変更した時刻
+  lastLocalChangeAt: 0,
+  // 次の保存の前に「編集開始前」として残す、変更前のレイアウト
+  pendingBeforeEdit: null,
+  // プレビュー中の履歴と、プレビュー前のローカルの状態
+  previewing: null,
+  prePreviewLayout: null,
+  historyEntries: []
 };
 
 let sdk = null;
 let auth = null;
 let db = null;
 let mapRef = null;
+let historyRef = null;
 
 const el = {
   controls: document.getElementById("cloudControls"),
@@ -80,6 +97,12 @@ const el = {
   newPasswordConfirmInput: document.getElementById("newPasswordConfirmInput"),
   changePasswordButton: document.getElementById("changePasswordButton"),
   settingsCloudMessage: document.getElementById("settingsCloudMessage"),
+  historyButton: document.getElementById("historyButton"),
+  historyDialog: document.getElementById("historyDialog"),
+  historyList: document.getElementById("historyList"),
+  historyMessage: document.getElementById("historyMessage"),
+  historyNameInput: document.getElementById("historyNameInput"),
+  saveNamedButton: document.getElementById("saveNamedButton"),
   banner: document.getElementById("cloudBanner"),
   bannerText: document.getElementById("cloudBannerText"),
   bannerActions: document.getElementById("cloudBannerActions"),
@@ -123,6 +146,10 @@ function showToast(text) {
 }
 function formatTime(date) {
   return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
+}
+function formatDateTime(date) {
+  if (!date) return "日時不明";
+  return (date.getMonth() + 1) + "/" + date.getDate() + " " + formatTime(date);
 }
 
 // ---- レイアウト ----
@@ -183,8 +210,8 @@ function revertToLatest() {
   refreshUi();
 }
 // 保存用のレイアウト。表示位置（view.center / zoom）は自分の画面ではなく、Webの初期表示を保つ。
-function buildSaveLayout() {
-  const layout = mapApp.getLayout();
+function buildSaveLayout(baseLayout) {
+  const layout = baseLayout ? JSON.parse(JSON.stringify(baseLayout)) : mapApp.getLayout();
   const source = state.remote && !state.showingFallback ? state.remote.layout : state.fallbackLayout;
   const sharedView = source && source.view && typeof source.view === "object" ? source.view : {};
   layout.view = {
@@ -202,6 +229,14 @@ function rememberSavedKey(layout) {
 
 // ---- 表示状態の更新 ----
 function refreshBanner() {
+  if (state.previewing) {
+    const actions = [];
+    if (state.role === "saver") actions.push({ label: "この状態に復元", onClick: () => restoreHistory(state.previewing) });
+    actions.push({ label: "プレビューを終了", onClick: endPreview });
+    showBanner("プレビュー中：" + historyTitle(state.previewing) + "（" + formatDateTime(state.previewing.createdAt) + "）",
+      actions, "preview");
+    return;
+  }
   const canRegister = state.role === "saver" && state.docMissing;
   const registerAction = { label: "公開用の配置をWebに登録", onClick: registerMap };
   if (state.localDirty) {
@@ -241,6 +276,7 @@ function refreshRole() {
   el.roleBadge.textContent = state.role === "saver" ? "保存可：" + state.account :
     state.role === "editor" ? "編集" : "閲覧";
   el.loginButton.textContent = state.role === "viewer" ? "ログイン" : "ログアウト";
+  el.historyButton.hidden = state.role === "viewer";
 }
 function refreshUi() {
   refreshRole();
@@ -251,7 +287,8 @@ function refreshUi() {
 // ---- 受信 ----
 let busyRetryTimer = 0;
 function processRemote() {
-  if (!state.remote || state.showingFallback) return;
+  // プレビュー中は適用を止め、終了後に最新を適用する。
+  if (!state.remote || state.showingFallback || state.previewing) return;
   // ドラッグ中や名前入力中は、操作が終わってから適用する。
   if (mapApp.isBusy()) {
     window.clearTimeout(busyRetryTimer);
@@ -290,6 +327,12 @@ function handleLocalChange() {
     return;
   }
   if (state.role === "saver") {
+    // しばらくぶり（またはセッションで初めて）の変更なら、変更前のWebの状態を履歴に残す。
+    const now = Date.now();
+    if (!state.pendingBeforeEdit && (!state.lastLocalChangeAt || now - state.lastLocalChangeAt >= BEFORE_EDIT_INTERVAL_MS)) {
+      state.pendingBeforeEdit = state.remote.layout;
+    }
+    state.lastLocalChangeAt = now;
     state.dirty = true;
     scheduleSave();
     refreshUi();
@@ -316,7 +359,7 @@ function mapDocument(layout) {
 }
 async function saveNow() {
   window.clearTimeout(saveTimer);
-  if (state.saving || state.role !== "saver" || !state.remote || state.showingFallback) return;
+  if (state.saving || state.role !== "saver" || !state.remote || state.showingFallback || state.previewing) return;
   if (!state.dirty && !state.saveError) return;
   state.dirty = false;
   state.saveError = false;
@@ -324,8 +367,15 @@ async function saveNow() {
   refreshStatus();
   const layout = buildSaveLayout();
   if (state.remote.rev > state.baseRev) {
-    // 後から保存した側が優先。上書きされた内容は履歴（編集開始前）から復元できる。
+    // 後から保存した側が優先。上書きされる内容は「編集開始前」の履歴に残し、そこから復元できるようにする。
     showToast("他の人が先に更新しました。あなたの内容で上書きします");
+    if (!state.pendingBeforeEdit) state.pendingBeforeEdit = state.remote.layout;
+  }
+  if (state.pendingBeforeEdit) {
+    const beforeEdit = state.pendingBeforeEdit;
+    state.pendingBeforeEdit = null;
+    // 履歴の書き込みはマップの保存を待たせない（失敗してもマップの保存は続ける）。
+    addHistory("before-edit", beforeEdit).catch((error) => console.error("before-edit history failed", error));
   }
   rememberSavedKey(layout);
   try {
@@ -341,6 +391,237 @@ async function saveNow() {
   refreshUi();
   if (!state.dirty && !state.saveError) processRemote();
 }
+// ---- 履歴 ----
+function historyTitle(entry) {
+  return entry.kind === "named" ? "★ " + entry.name : HISTORY_KIND_LABELS[entry.kind] || entry.kind;
+}
+async function addHistory(kind, layout, name) {
+  const entry = {
+    kind,
+    layout: pickLayout(layout),
+    createdAt: sdk.serverTimestamp(),
+    createdBy: state.account
+  };
+  if (kind === "named") entry.name = name;
+  await sdk.addDoc(historyRef, entry);
+  if (kind !== "named") pruneAutoHistory().catch((error) => console.error("history prune failed", error));
+}
+async function fetchHistory() {
+  const snapshot = await sdk.getDocs(sdk.query(historyRef, sdk.orderBy("createdAt", "desc")));
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      kind: data.kind,
+      name: typeof data.name === "string" ? data.name : "",
+      layout: data.layout,
+      createdAt: data.createdAt && typeof data.createdAt.toDate === "function" ? data.createdAt.toDate() : null,
+      createdBy: data.createdBy || ""
+    };
+  });
+}
+// 自動の履歴（編集開始前・復元前）を新しい順に AUTO_HISTORY_LIMIT 件だけ残す。
+async function pruneAutoHistory() {
+  const entries = await fetchHistory();
+  const stale = entries.filter((entry) => entry.kind !== "named").slice(AUTO_HISTORY_LIMIT);
+  await Promise.all(stale.map((entry) => sdk.deleteDoc(sdk.doc(historyRef, entry.id))));
+}
+function setHistoryMessage(text, isError) {
+  el.historyMessage.textContent = text;
+  el.historyMessage.classList.toggle("error", !!isError);
+}
+function historyButton(label, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+function renderHistoryList() {
+  // 名前付き保存を先頭にまとめ、そのあとに自動の履歴を新しい順に並べる。
+  const named = state.historyEntries.filter((entry) => entry.kind === "named");
+  const auto = state.historyEntries.filter((entry) => entry.kind !== "named");
+  const items = named.concat(auto).map((entry) => {
+    const item = document.createElement("li");
+    item.className = "history-item";
+    const info = document.createElement("div");
+    info.className = "history-item-info";
+    const title = document.createElement("span");
+    title.className = "history-item-title";
+    title.textContent = historyTitle(entry);
+    const meta = document.createElement("span");
+    meta.className = "history-item-meta";
+    meta.textContent = formatDateTime(entry.createdAt) + (entry.createdBy ? "・" + entry.createdBy : "");
+    info.append(title, meta);
+    const actions = document.createElement("div");
+    actions.className = "history-item-actions";
+    actions.append(historyButton("プレビュー", () => startPreview(entry)));
+    if (state.role === "saver") {
+      actions.append(historyButton("復元", () => restoreHistory(entry)));
+      if (entry.kind === "named") {
+        actions.append(historyButton("名前変更", () => renameHistory(entry)));
+        actions.append(historyButton("削除", () => deleteHistory(entry)));
+      }
+    }
+    item.append(info, actions);
+    return item;
+  });
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.className = "history-empty";
+    empty.textContent = "履歴はまだありません";
+    items.push(empty);
+  }
+  el.historyList.replaceChildren(...items);
+}
+async function loadHistoryList() {
+  setHistoryMessage("読み込み中…");
+  try {
+    state.historyEntries = await fetchHistory();
+    setHistoryMessage("");
+  } catch (error) {
+    console.error("history load failed", error);
+    state.historyEntries = [];
+    setHistoryMessage("履歴を読み込めません", true);
+  }
+  renderHistoryList();
+}
+function openHistoryDialog() {
+  if (state.role === "viewer") return;
+  el.historyNameInput.value = "";
+  el.historyList.replaceChildren();
+  el.historyDialog.hidden = false;
+  loadHistoryList();
+}
+function closeHistoryDialog() {
+  el.historyDialog.hidden = true;
+}
+// 自分の画面だけで履歴の状態を表示する。プレビュー中は編集とWebの適用を止める。
+function startPreview(entry) {
+  if (!state.previewing) state.prePreviewLayout = mapApp.getLayout();
+  try {
+    mapApp.applyLayout(entry.layout, { source: "preview" });
+  } catch (error) {
+    console.error("history preview failed", error);
+    setHistoryMessage("この履歴は表示できません: " + error.message, true);
+    return;
+  }
+  state.previewing = entry;
+  mapApp.setReadOnly(true);
+  closeHistoryDialog();
+  refreshUi();
+}
+function endPreview() {
+  if (!state.previewing) return;
+  state.previewing = null;
+  if (state.prePreviewLayout) mapApp.applyLayout(state.prePreviewLayout, { source: "preview" });
+  state.prePreviewLayout = null;
+  mapApp.setReadOnly(false);
+  refreshUi();
+  if (state.dirty) scheduleSave();
+  processRemote();
+}
+async function restoreHistory(entry) {
+  if (state.role !== "saver" || !state.remote || state.showingFallback) return;
+  if (!window.confirm(historyTitle(entry) + "（" + formatDateTime(entry.createdAt) + "）の状態に復元します。\n" +
+      "全員のマップが置き換わります（復元前の状態は履歴に残ります）。よろしいですか？")) return;
+  const layout = pickLayout(entry.layout);
+  try {
+    mapApp.applyLayout(layout, { source: "cloud" });
+  } catch (error) {
+    showToast("この履歴は復元できません: " + error.message);
+    return;
+  }
+  // プレビューは終了し、復元した状態をそのまま表示する。
+  state.previewing = null;
+  state.prePreviewLayout = null;
+  mapApp.setReadOnly(false);
+  closeHistoryDialog();
+  cancelScheduledSave();
+  state.saving = true;
+  refreshUi();
+  try {
+    await addHistory("before-restore", state.remote.layout);
+    rememberSavedKey(layout);
+    await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
+    state.lastSavedAt = new Date();
+    showToast("復元しました");
+  } catch (error) {
+    console.error("history restore failed", error);
+    showToast("復元できません");
+    state.saving = false;
+    revertToLatest();
+    return;
+  }
+  state.saving = false;
+  refreshUi();
+  processRemote();
+}
+async function saveNamedHistory() {
+  if (state.role !== "saver" || !state.remote || state.showingFallback) return;
+  const name = el.historyNameInput.value.trim();
+  if (!name || name.length > HISTORY_NAME_MAX_LENGTH) {
+    setHistoryMessage("名前は1〜" + HISTORY_NAME_MAX_LENGTH + "文字で入力してください", true);
+    return;
+  }
+  if (state.historyEntries.filter((entry) => entry.kind === "named").length >= NAMED_HISTORY_LIMIT) {
+    setHistoryMessage("名前付き保存は" + NAMED_HISTORY_LIMIT + "件までです。不要なものを削除してください", true);
+    return;
+  }
+  el.saveNamedButton.disabled = true;
+  try {
+    // プレビュー中でも保存するのは自分の編集中の状態（プレビュー前の状態）。
+    await addHistory("named", buildSaveLayout(state.previewing ? state.prePreviewLayout : undefined), name);
+    el.historyNameInput.value = "";
+    await loadHistoryList();
+    setHistoryMessage("「" + name + "」を保存しました");
+  } catch (error) {
+    console.error("named history save failed", error);
+    setHistoryMessage("保存できません", true);
+  } finally {
+    el.saveNamedButton.disabled = false;
+  }
+}
+async function renameHistory(entry) {
+  if (state.role !== "saver" || entry.kind !== "named") return;
+  const input = window.prompt("新しい名前（" + HISTORY_NAME_MAX_LENGTH + "文字まで）", entry.name);
+  if (input === null) return;
+  const name = input.trim();
+  if (!name || name.length > HISTORY_NAME_MAX_LENGTH) {
+    setHistoryMessage("名前は1〜" + HISTORY_NAME_MAX_LENGTH + "文字で入力してください", true);
+    return;
+  }
+  try {
+    await sdk.updateDoc(sdk.doc(historyRef, entry.id), { name });
+    await loadHistoryList();
+  } catch (error) {
+    console.error("history rename failed", error);
+    setHistoryMessage("名前を変更できません", true);
+  }
+}
+async function deleteHistory(entry) {
+  if (state.role !== "saver" || entry.kind !== "named") return;
+  if (!window.confirm("「" + entry.name + "」を削除します。よろしいですか？")) return;
+  try {
+    await sdk.deleteDoc(sdk.doc(historyRef, entry.id));
+    await loadHistoryList();
+  } catch (error) {
+    console.error("history delete failed", error);
+    setHistoryMessage("削除できません", true);
+  }
+}
+function setupHistoryUi() {
+  el.historyButton.addEventListener("click", openHistoryDialog);
+  document.getElementById("closeHistory").addEventListener("click", closeHistoryDialog);
+  el.historyDialog.addEventListener("click", (event) => {
+    if (event.target === el.historyDialog) closeHistoryDialog();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !el.historyDialog.hidden) closeHistoryDialog();
+  });
+  el.saveNamedButton.addEventListener("click", saveNamedHistory);
+}
+
 // Webにマップがないとき、表示中の配置を maps/main として登録する。
 async function registerMap() {
   if (state.role !== "saver" || !state.docMissing) return;
@@ -400,6 +681,10 @@ function handleAuthChanged(user) {
   state.role = next.role;
   state.account = next.account;
   if (next.role !== "saver") cancelScheduledSave();
+  if (next.role === "viewer") {
+    closeHistoryDialog();
+    endPreview();
+  }
   if (next.role === "viewer" && hadUnsavedWork) {
     // ログアウトしたら、保存されていない変更を捨ててWebの最新に戻す。
     revertToLatest();
@@ -641,6 +926,8 @@ async function start() {
   const firebaseApp = sdk.initializeApp(FIREBASE_CONFIG);
   db = sdk.initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
   mapRef = sdk.doc(db, "maps", "main");
+  historyRef = sdk.collection(db, "maps", "main", "history");
+  setupHistoryUi();
   window.setTimeout(() => { if (!state.initialShown) showFallback(); }, FIRST_SNAPSHOT_TIMEOUT_MS);
   sdk.onSnapshot(mapRef, { includeMetadataChanges: true }, handleSnapshot, (error) => {
     console.error("map snapshot failed", error);
