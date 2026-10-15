@@ -1,6 +1,7 @@
 // Web のマップの受信と適用、保存可の自動保存、ヘッダーの保存状態と帯の表示。
 import { mapApp, state, sdk, mapRef, setCloudStatus, showBanner, hideBanner, showToast, formatTime, formatDateTime, pickLayout, layoutContentKey, isSameAsLocal, applyRemoteLayout, buildSaveLayout, rememberSavedKey, mapDocument, setSettingsMessage } from "./cloud-shared.js";
-import { historyTitle, addHistory, endPreview, restoreHistory, refreshRole } from "./cloud.js";
+import { historyTitle, addHistory, endPreview, restoreHistory } from "./cloud-history.js";
+import { refreshRole } from "./cloud.js";
 
 // 最後の変更からこの時間が経ったら、まとめてWebに保存する。
 const SAVE_DEBOUNCE_MS = 1000;
