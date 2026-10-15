@@ -199,6 +199,12 @@
   button:hover{
     background:var(--panel-border);
   }
+  /* 権限による表示の出し分け。edit=編集系の操作、file=JSONの保存と読み込み */
+  body[data-role="viewer"] [data-role-ui="edit"],
+  body.read-only [data-role-ui="edit"],
+  body[data-role="viewer"] [data-role-ui="file"],
+  body[data-role="editor"] [data-role-ui="file"],
+  body.read-only [data-role-ui="file"]{display:none !important;}
 </style>
 </head>
 <body>
@@ -213,7 +219,7 @@
     <input id="labelSizeInput" type="range" min="6" max="12" step="1" value="8">
     <output id="labelSizeOutput" for="labelSizeInput">8 px</output>
   </label>
-  <div class="map-tools" role="group" aria-label="配置する種類">
+  <div class="map-tools" role="group" aria-label="配置する種類" data-role-ui="edit">
     <button class="map-tool active" type="button" data-type="headquarters" aria-pressed="true">本部</button>
     <button class="map-tool" type="button" data-type="flag" aria-pressed="false">旗</button>
     <button class="map-tool" type="button" data-type="city" aria-pressed="false">都市</button>
@@ -224,16 +230,16 @@
     <button class="map-tool" type="button" data-type="erase" aria-pressed="false">消去</button>
   </div>
   <div class="map-actions">
-    <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true">編集モード</button>
-    <button id="saveLayoutButton" type="button">ファイルに保存</button>
-    <button id="loadLayoutButton" type="button">読み込み</button>
+    <button id="editModeToggle" class="edit-mode-toggle active" type="button" aria-pressed="true" data-role-ui="edit">編集モード</button>
+    <button id="saveLayoutButton" type="button" data-role-ui="file">ファイルに保存</button>
+    <button id="loadLayoutButton" type="button" data-role-ui="file">読み込み</button>
     <button id="exportPngButton" type="button">画像出力</button>
     <button id="exportSvgButton" type="button">SVG出力</button>
     <input id="layoutFileInput" type="file" accept=".json,application/json">
     <span id="layoutFileStatus" class="layout-file-status" role="status" aria-live="polite"></span>
-    <button id="undoAction" type="button" disabled>ひとつ戻る</button>
-    <button id="openObjectColorSettings" type="button">設定</button>
-    <button id="resetMapAction" type="button">リセット</button>
+    <button id="undoAction" type="button" disabled data-role-ui="edit">ひとつ戻る</button>
+    <button id="openObjectColorSettings" type="button" data-role-ui="edit">設定</button>
+    <button id="resetMapAction" type="button" data-role-ui="edit">リセット</button>
   </div>
 </div>
 
@@ -428,16 +434,28 @@
   var TYPE_COLORS = loadTypeColors();
   var TYPE_LABELS = { headquarters: "本部", flag: "旗", city: "都市", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
   var PLACEMENT_SIZES = { headquarters: 3, bearTrap: 3, city: 2, flag: 1, allianceBuilding: 2, largeGatheringSite: 3, unavailable: 1 };
-  // 配置は起動のたびに default-layout.json から読み込み、ブラウザには保存しない。
-  // 編集内容は「ファイルに保存」で書き出し、管理者が default-layout.json を差し替える。
+  // 配置はWeb（cloud.js）から読み込み、ブラウザには保存しない。
+  // Webに接続できないときは default-layout.json を読み込む。
   var classifications = {};
   var placements = [];
   var activeTool = "headquarters";
   var editMode = false;
   var hasUnsavedChanges = false;
-  function markLayoutChanged(){ hasUnsavedChanges = true; }
+  var localChangeListeners = [];
+  // kind: "edit"（配置・移動・消去・名前変更）、"undo"、"reset"、"settings"、"file"
+  function emitLocalChange(kind){
+    localChangeListeners.forEach(function(callback){
+      try{ callback(kind); }catch(e){ console.error("local change listener failed", e); }
+    });
+  }
+  function markLayoutChanged(kind){
+    hasUnsavedChanges = true;
+    emitLocalChange(kind || "edit");
+  }
+  // 離脱警告の判定。cloud.js が権限に応じた判定に差し替える。
+  var unloadGuard = function(){ return hasUnsavedChanges; };
   window.addEventListener("beforeunload", function(event){
-    if (!hasUnsavedChanges) return;
+    if (!unloadGuard()) return;
     event.preventDefault();
     event.returnValue = "";
   });
@@ -509,7 +527,7 @@
     panY = previous.panY;
     zoom = previous.zoom;
     updateGridMetrics();
-    markLayoutChanged();
+    markLayoutChanged("undo");
     updateZoomReadout();
     updateUndoButton();
     render();
@@ -522,24 +540,28 @@
     classifications = {};
     zoom = zoomBase;
     centerMapView();
-    markLayoutChanged();
+    markLayoutChanged("reset");
     updateZoomReadout();
     render();
   });
   var layoutFileInput = document.getElementById("layoutFileInput");
   var layoutFileStatus = document.getElementById("layoutFileStatus");
-  document.getElementById("saveLayoutButton").addEventListener("click", function(){
-    var savedAt = new Date();
-    var layout = {
+  // 「ファイルに保存」と同じ形式のレイアウト。Webへの保存にもこの形式を使う。
+  function getLayout(){
+    return JSON.parse(JSON.stringify({
       format: "alliance-map-layout",
       version: 1,
-      savedAt: savedAt.toISOString(),
       classifications: classifications,
       placements: placements,
       objectColors: TYPE_COLORS,
       bearTrapLabelSize: bearTrapLabelSize,
       view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
-    };
+    }));
+  }
+  document.getElementById("saveLayoutButton").addEventListener("click", function(){
+    var savedAt = new Date();
+    var layout = getLayout();
+    layout.savedAt = savedAt.toISOString();
     downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
       "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
     hasUnsavedChanges = false;
@@ -633,7 +655,7 @@
     if (event.key === "Escape" && !imagePreviewDialog.hidden) closeImagePreview();
   });
   document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
-  function applyLayout(imported){
+  function applyLayout(imported, options){
     if (!imported || imported.format !== "alliance-map-layout" || imported.version !== 1 ||
         !imported.classifications || typeof imported.classifications !== "object" || Array.isArray(imported.classifications) ||
         !Array.isArray(imported.placements) || imported.placements.length > 2000){
@@ -692,19 +714,31 @@
     var nextBearTrapLabelSize = Number.isInteger(imported.bearTrapLabelSize) ?
       clampMapSize(imported.bearTrapLabelSize, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30) : bearTrapLabelSize;
     // ここまでで検証を終え、以降だけで状態を書き換える（途中で例外が起きても状態が壊れないように）。
-    rememberMapState();
+    // source: "file"（JSON読み込み）、"default"（default-layout.json）、"cloud-initial"（Webの初回）、
+    // "cloud"（Webの更新・最新に戻す）、"preview"（履歴のプレビュー）。
+    // 表示位置（view.center と zoom）は file/default/cloud-initial のときだけ適用し、
+    // それ以外は今の表示位置を保つ。ひとつ戻るの対象になるのは file だけ。
+    var source = options && options.source || "file";
+    var applyView = source === "file" || source === "default" || source === "cloud-initial";
+    var keepCenter = applyView ? nextCenter : getViewCenter();
+    if (source === "file") rememberMapState();
+    else {
+      undoStack = [];
+      updateUndoButton();
+    }
     classifications = nextClassifications;
     placements = nextPlacements;
     TYPE_COLORS = nextTypeColors;
     bearTrapLabelSize = nextBearTrapLabelSize;
-    zoom = nextZoom;
+    if (applyView) zoom = nextZoom;
+    if (source === "default" || source === "cloud-initial") zoomBase = zoom;
     mapCols = nextMapCols;
     mapRows = nextMapRows;
     mapColsInput.value = String(mapCols);
     mapRowsInput.value = String(mapRows);
     updateZoomReadout();
     updateGridMetrics();
-    setViewCenter(nextCenter);
+    setViewCenter(keepCenter);
     hasUnsavedChanges = false;
     saveMapRange();
     saveTypeColors();
@@ -716,8 +750,13 @@
   layoutFileInput.addEventListener("change", function(){
     var file = layoutFileInput.files && layoutFileInput.files[0];
     if (!file) return;
+    if (currentRole === "saver" && !window.confirm("Webのマップを置き換えます。よろしいですか？")){
+      layoutFileInput.value = "";
+      return;
+    }
     file.text().then(function(text){
-      applyLayout(JSON.parse(text));
+      applyLayout(JSON.parse(text), { source: "file" });
+      emitLocalChange("file");
       layoutFileStatus.textContent = "配置を読み込みました";
     }).catch(function(error){
       layoutFileStatus.textContent = "読み込めません: " + error.message;
@@ -905,8 +944,12 @@
   document.addEventListener("keydown", function(event){
     if (event.key === "Escape" && !objectColorDialog.hidden) closeObjectColorDialog();
   });
+  function getSharedSettingsKey(){
+    return JSON.stringify([TYPE_COLORS, bearTrapLabelSize, mapCols, mapRows]);
+  }
   objectColorForm.addEventListener("submit", function(event){
     event.preventDefault();
+    var previousSettings = getSharedSettingsKey();
     objectColorInputs.forEach(function(input){ TYPE_COLORS[input.getAttribute("data-object-color")] = input.value.toLowerCase(); });
     saveTypeColors();
     bearTrapLabelSize = clampMapSize(bearTrapLabelSizeInput.value, bearTrapLabelSize, 6, 30);
@@ -914,6 +957,7 @@
     updateMapToolColors();
     closeObjectColorDialog();
     applyMapRange();
+    if (getSharedSettingsKey() !== previousSettings) markLayoutChanged("settings");
   });
   refreshObjectColorInputs();
   updateMapToolColors();
@@ -952,6 +996,7 @@
     mapWrap.classList.toggle("edit-mode", editMode);
   }
   editModeToggle.addEventListener("click", function(){
+    if (currentRole === "viewer" || readOnly) return;
     editMode = !editMode;
     updateEditModeButton();
     updateMapCursor();
@@ -1443,26 +1488,78 @@
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(exportSvg);
   }
 
-  render();
-  (function loadPublishedLayout(){
-    fetch("./default-layout.json", { cache: "no-cache" })
+  // ---- 権限 ----
+  // "local"：Webに接続していない（cloud.js が動かない）状態。現行どおりすべての操作を使える。
+  // "viewer" / "editor" / "saver"：cloud.js が設定する。表示の出し分けは CSS（body[data-role]）で行う。
+  var currentRole = "local";
+  var readOnly = false;
+  function applyRoleUi(){
+    document.body.setAttribute("data-role", currentRole);
+    document.body.classList.toggle("read-only", readOnly);
+    if ((currentRole === "viewer" || readOnly) && editMode){
+      editMode = false;
+      closeNameDialog();
+      closeObjectColorDialog();
+    }
+    updateEditModeButton();
+    updateMapCursor();
+  }
+  function setRole(role){
+    currentRole = role;
+    applyRoleUi();
+  }
+  // 履歴のプレビュー中など、一時的に編集を止める。
+  function setReadOnly(value){
+    readOnly = !!value;
+    applyRoleUi();
+  }
+  function isBusy(){
+    return !!(objectDragState || pinchState || longPressState || (dragState && dragState.moved) ||
+      !cityNameDialog.hidden || !objectColorDialog.hidden);
+  }
+  function loadDefaultLayout(){
+    return fetch("./default-layout.json", { cache: "no-cache" })
       .then(function(response){
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.json();
       })
       .then(function(layout){
-        applyLayout(layout);
-        zoomBase = zoom;
-        updateZoomReadout();
-        undoStack = [];
-        updateUndoButton();
-        layoutFileStatus.textContent = "公開用の配置を読み込みました";
-      })
-      .catch(function(error){
-        console.error("published layout load failed", error);
-        layoutFileStatus.textContent = "公開用の配置を読み込めません: " + error.message;
+        applyLayout(layout, { source: "default" });
+        return layout;
       });
-  })();
+  }
+  var cloudAttached = false;
+  window.AllianceMapApp = {
+    getLayout: getLayout,
+    applyLayout: function(layout, options){ applyLayout(layout, options); },
+    loadDefaultLayout: loadDefaultLayout,
+    setRole: setRole,
+    getRole: function(){ return currentRole; },
+    setReadOnly: setReadOnly,
+    onLocalChange: function(callback){ localChangeListeners.push(callback); },
+    isBusy: isBusy,
+    setUnloadGuard: function(guard){ unloadGuard = guard; },
+    setStatus: function(text){ layoutFileStatus.textContent = text; },
+    // 現在のズームを100%表示の基準にする（「現在の表示を初期表示にする」用）。
+    setZoomBase: function(value){
+      zoomBase = value;
+      updateZoomReadout();
+    },
+    attachCloud: function(){ cloudAttached = true; }
+  };
+
+  applyRoleUi();
+  render();
+  // cloud.js が読み込めない環境（file:// やCDNに接続できない場合）は、現行どおり default-layout.json を表示する。
+  window.setTimeout(function(){
+    if (cloudAttached) return;
+    loadDefaultLayout().then(function(){
+      layoutFileStatus.textContent = "公開用の配置を読み込みました";
+    }).catch(function(error){
+      console.error("published layout load failed", error);
+      layoutFileStatus.textContent = "公開用の配置を読み込めません: " + error.message;
+    });
+  }, 1500);
 })();
 </script>
 </body>
