@@ -13,6 +13,10 @@ const EDITOR_EMAIL = "editor@alliance-map.app";
 // 保存可能アカウントのメールは「アカウント名 + このドメイン」で内部生成する
 const SAVER_EMAIL_DOMAIN = "saver.alliance-map.app";
 
+const ACCOUNT_NAME_PATTERN = /^[a-z0-9_-]{1,20}$/;
+const ACCOUNT_NAME_KEY = "alliance_map_account_name_v1";
+const LOGIN_FAILED_MESSAGE = "アカウント名または合言葉が違います";
+
 const SDK_BASE = "https://www.gstatic.com/firebasejs/13.0.0/";
 // 最初のスナップショットがこの時間内に届かなければ default-layout.json を表示する。
 const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
@@ -28,12 +32,42 @@ const state = {
   docMissing: false,
   // 最後に受信した maps/main（レイアウトとメタ情報）
   remote: null,
-  online: navigator.onLine
+  // default-layout.json の内容（Web未登録・オフライン時の「最新」）
+  fallbackLayout: null,
+  online: navigator.onLine,
+  // "viewer" | "editor" | "saver"
+  role: "viewer",
+  // saver のアカウント名
+  account: "",
+  // editor：ローカルで変更している
+  localDirty: false,
+  // editor：ローカル変更中にWebが更新された
+  remoteChangedWhileDirty: false
 };
+
+let sdk = null;
+let auth = null;
+let db = null;
+let mapRef = null;
 
 const el = {
   controls: document.getElementById("cloudControls"),
   status: document.getElementById("cloudStatus"),
+  roleBadge: document.getElementById("roleBadge"),
+  loginButton: document.getElementById("loginButton"),
+  loginDialog: document.getElementById("loginDialog"),
+  loginForm: document.getElementById("loginForm"),
+  loginTabs: Array.from(document.querySelectorAll("[data-login-mode]")),
+  loginModeNote: document.getElementById("loginModeNote"),
+  loginAccountField: document.getElementById("loginAccountField"),
+  loginAccountInput: document.getElementById("loginAccountInput"),
+  loginPasswordInput: document.getElementById("loginPasswordInput"),
+  loginError: document.getElementById("loginError"),
+  loginSubmit: document.getElementById("loginSubmit"),
+  newPasswordInput: document.getElementById("newPasswordInput"),
+  newPasswordConfirmInput: document.getElementById("newPasswordConfirmInput"),
+  changePasswordButton: document.getElementById("changePasswordButton"),
+  settingsCloudMessage: document.getElementById("settingsCloudMessage"),
   banner: document.getElementById("cloudBanner"),
   bannerText: document.getElementById("cloudBannerText"),
   bannerActions: document.getElementById("cloudBannerActions"),
@@ -126,8 +160,22 @@ function applyRemoteLayout(layout, initial) {
   }
 }
 
+// Webの最新（未登録・オフライン時は default-layout.json）に戻す。表示位置は変えない。
+function revertToLatest() {
+  const latest = state.remote && !state.showingFallback ? state.remote.layout : state.fallbackLayout;
+  if (latest && !applyRemoteLayout(latest, false)) return;
+  state.localDirty = false;
+  state.remoteChangedWhileDirty = false;
+  refreshUi();
+}
+
 // ---- 表示状態の更新 ----
 function refreshBanner() {
+  if (state.role === "editor" && state.localDirty) {
+    showBanner(state.remoteChangedWhileDirty ? "Webで更新がありました" : "ローカル編集中（保存されません）",
+      [{ label: "最新に戻す", onClick: revertToLatest }]);
+    return;
+  }
   if (state.showingFallback) {
     showBanner(state.docMissing ? "Webにマップが未登録のため、公開用の配置を表示しています" :
       "オフライン表示（Webに接続できないため、公開用の配置を表示しています）", [], "offline");
@@ -141,16 +189,214 @@ function refreshStatus() {
   else if (state.remote) setCloudStatus("Web同期中");
   else setCloudStatus("接続中…");
 }
+function refreshRole() {
+  el.roleBadge.setAttribute("data-role", state.role);
+  el.roleBadge.textContent = state.role === "saver" ? "保存可：" + state.account :
+    state.role === "editor" ? "編集" : "閲覧";
+  el.loginButton.textContent = state.role === "viewer" ? "ログイン" : "ログアウト";
+}
 function refreshUi() {
+  refreshRole();
   refreshBanner();
   refreshStatus();
 }
 
 // ---- 受信 ----
+let busyRetryTimer = 0;
 function processRemote() {
-  if (!state.remote) return;
-  if (isSameAsLocal(state.remote.layout)) return;
+  if (!state.remote || state.showingFallback) return;
+  // ドラッグ中や名前入力中は、操作が終わってから適用する。
+  if (mapApp.isBusy()) {
+    window.clearTimeout(busyRetryTimer);
+    busyRetryTimer = window.setTimeout(processRemote, 500);
+    return;
+  }
+  if (isSameAsLocal(state.remote.layout)) {
+    if (state.role === "editor") {
+      state.localDirty = false;
+      state.remoteChangedWhileDirty = false;
+      refreshUi();
+    }
+    return;
+  }
+  if (state.role === "editor" && state.localDirty) {
+    state.remoteChangedWhileDirty = true;
+    refreshUi();
+    return;
+  }
   applyRemoteLayout(state.remote.layout, false);
+}
+
+// ---- ローカルの変更 ----
+function handleLocalChange() {
+  if (state.role === "editor") {
+    state.localDirty = true;
+    refreshUi();
+  }
+}
+
+// ---- 権限 ----
+function roleForUser(user) {
+  if (!user || !user.email) return { role: "viewer", account: "" };
+  const email = user.email.toLowerCase();
+  if (email === EDITOR_EMAIL) return { role: "editor", account: "" };
+  const suffix = "@" + SAVER_EMAIL_DOMAIN;
+  if (email.endsWith(suffix)) {
+    const account = email.slice(0, -suffix.length);
+    if (ACCOUNT_NAME_PATTERN.test(account)) return { role: "saver", account };
+  }
+  return null;
+}
+function handleAuthChanged(user) {
+  const next = roleForUser(user);
+  if (!next) {
+    // 想定外のアカウントはログアウトして閲覧として扱う。
+    sdk.signOut(auth).catch((error) => console.error("sign out failed", error));
+    return;
+  }
+  const previousRole = state.role;
+  state.role = next.role;
+  state.account = next.account;
+  if (previousRole !== "viewer" && next.role === "viewer" && state.localDirty) {
+    // ログアウトしたら、ローカルの変更を捨ててWebの最新に戻す。
+    revertToLatest();
+  }
+  if (next.role !== "editor") {
+    state.localDirty = false;
+    state.remoteChangedWhileDirty = false;
+  }
+  mapApp.setRole(next.role);
+  refreshUi();
+  processRemote();
+}
+function hasUnsavedWork() {
+  return state.role === "editor" && state.localDirty;
+}
+
+// ---- ログイン ----
+let loginMode = "editor";
+function setLoginMode(mode) {
+  loginMode = mode;
+  el.loginTabs.forEach((tab) => {
+    tab.setAttribute("aria-selected", tab.getAttribute("data-login-mode") === mode ? "true" : "false");
+  });
+  el.loginAccountField.hidden = mode !== "saver";
+  el.loginModeNote.textContent = mode === "saver" ?
+    "編集した内容はWebに自動保存され、全員の画面に反映されます。" :
+    "編集はできますが、変更はこのブラウザ内だけで、Webには保存されません。";
+  el.loginError.textContent = "";
+}
+function openLoginDialog(mode) {
+  setLoginMode(mode || loginMode);
+  try { el.loginAccountInput.value = localStorage.getItem(ACCOUNT_NAME_KEY) || ""; } catch (e) { /* 記憶できない環境 */ }
+  el.loginPasswordInput.value = "";
+  el.loginSubmit.disabled = false;
+  el.loginDialog.hidden = false;
+  (loginMode === "saver" && !el.loginAccountInput.value ? el.loginAccountInput : el.loginPasswordInput).focus();
+}
+function closeLoginDialog() {
+  el.loginDialog.hidden = true;
+  el.loginPasswordInput.value = "";
+}
+async function submitLogin(event) {
+  event.preventDefault();
+  const password = el.loginPasswordInput.value;
+  let email = EDITOR_EMAIL;
+  let account = "";
+  if (loginMode === "saver") {
+    account = el.loginAccountInput.value.trim().toLowerCase();
+    if (!ACCOUNT_NAME_PATTERN.test(account)) {
+      el.loginError.textContent = "アカウント名は半角英小文字・数字・_・- の1〜20文字で入力してください";
+      return;
+    }
+    email = account + "@" + SAVER_EMAIL_DOMAIN;
+  }
+  if (password.length < 6) {
+    el.loginError.textContent = "合言葉は6文字以上です";
+    return;
+  }
+  el.loginSubmit.disabled = true;
+  el.loginError.textContent = "";
+  try {
+    await sdk.signInWithEmailAndPassword(auth, email, password);
+    if (account) {
+      try { localStorage.setItem(ACCOUNT_NAME_KEY, account); } catch (e) { /* 記憶できない環境 */ }
+    }
+    closeLoginDialog();
+  } catch (error) {
+    // エラーの種類は外部に見せない。
+    console.error("sign in failed", error.code);
+    el.loginError.textContent = LOGIN_FAILED_MESSAGE;
+  } finally {
+    el.loginSubmit.disabled = false;
+  }
+}
+async function logout() {
+  if (hasUnsavedWork() && !window.confirm("ログアウトすると、保存されていない変更は失われます。よろしいですか？")) return;
+  try {
+    await sdk.signOut(auth);
+  } catch (error) {
+    console.error("sign out failed", error);
+    showToast("ログアウトできません");
+  }
+}
+function setupLoginUi() {
+  el.loginButton.addEventListener("click", () => {
+    if (state.role === "viewer") openLoginDialog();
+    else logout();
+  });
+  el.loginTabs.forEach((tab) => {
+    tab.addEventListener("click", () => setLoginMode(tab.getAttribute("data-login-mode")));
+  });
+  el.loginForm.addEventListener("submit", submitLogin);
+  document.getElementById("cancelLogin").addEventListener("click", closeLoginDialog);
+  el.loginDialog.addEventListener("click", (event) => {
+    if (event.target === el.loginDialog) closeLoginDialog();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !el.loginDialog.hidden) closeLoginDialog();
+  });
+  el.changePasswordButton.addEventListener("click", changePassword);
+}
+
+// ---- 合言葉の変更（saver） ----
+function setSettingsMessage(text, isError) {
+  el.settingsCloudMessage.textContent = text;
+  el.settingsCloudMessage.classList.toggle("error", !!isError);
+}
+async function changePassword() {
+  const password = el.newPasswordInput.value;
+  if (password.length < 6) {
+    setSettingsMessage("合言葉は6文字以上にしてください", true);
+    return;
+  }
+  if (password !== el.newPasswordConfirmInput.value) {
+    setSettingsMessage("確認用の合言葉が一致しません", true);
+    return;
+  }
+  if (!auth.currentUser || state.role !== "saver") return;
+  el.changePasswordButton.disabled = true;
+  try {
+    await sdk.updatePassword(auth.currentUser, password);
+    el.newPasswordInput.value = "";
+    el.newPasswordConfirmInput.value = "";
+    setSettingsMessage("合言葉を変更しました");
+  } catch (error) {
+    console.error("password update failed", error.code);
+    if (error.code === "auth/requires-recent-login") {
+      setSettingsMessage("安全のため、もう一度ログインしてから変更してください", true);
+      if (window.confirm("合言葉を変更するには、もう一度ログインする必要があります。ログアウトしてログイン画面を開きますか？")) {
+        await logout();
+        if (!auth.currentUser) openLoginDialog("saver");
+      }
+    } else if (error.code === "auth/weak-password") {
+      setSettingsMessage("合言葉は6文字以上にしてください", true);
+    } else {
+      setSettingsMessage("合言葉を変更できません", true);
+    }
+  } finally {
+    el.changePasswordButton.disabled = false;
+  }
 }
 function handleSnapshot(snapshot) {
   if (snapshot.metadata.hasPendingWrites) return;
@@ -163,13 +409,17 @@ function handleSnapshot(snapshot) {
   const data = snapshot.data();
   state.docMissing = false;
   state.remote = { layout: pickLayout(data), rev: data.rev || 0, updatedBy: data.updatedBy || "" };
-  if (!state.initialShown || state.showingFallback) {
-    // 初回は表示位置（view）も適用する。オフライン表示中にWebへつながった場合も初回と同じ扱い。
+  if (!state.initialShown) {
+    // 初回は表示位置（view）も適用する。
     if (applyRemoteLayout(state.remote.layout, true)) {
       state.initialShown = true;
-      state.showingFallback = false;
       mapApp.setStatus("");
     }
+  } else if (state.showingFallback) {
+    // オフライン表示中にWebへつながった。ローカルで変更していなければ初回と同じ扱いで表示する。
+    state.showingFallback = false;
+    if (hasUnsavedWork()) state.remoteChangedWhileDirty = true;
+    else applyRemoteLayout(state.remote.layout, true);
   } else {
     processRemote();
   }
@@ -182,7 +432,8 @@ function showFallback() {
     return;
   }
   if (!fallbackLoading) {
-    fallbackLoading = mapApp.loadDefaultLayout().then(() => {
+    fallbackLoading = mapApp.loadDefaultLayout().then((layout) => {
+      state.fallbackLayout = layout;
       state.initialShown = true;
       state.showingFallback = true;
       mapApp.setStatus("");
@@ -199,13 +450,13 @@ async function start() {
   mapApp.attachCloud();
   el.controls.hidden = false;
   refreshUi();
-  let sdk;
   try {
-    const [appModule, firestoreModule] = await Promise.all([
+    const [appModule, authModule, firestoreModule] = await Promise.all([
       import(SDK_BASE + "firebase-app.js"),
+      import(SDK_BASE + "firebase-auth.js"),
       import(SDK_BASE + "firebase-firestore.js")
     ]);
-    sdk = { ...appModule, ...firestoreModule };
+    sdk = { ...appModule, ...authModule, ...firestoreModule };
   } catch (error) {
     // SDK を読み込めない場合は、Web に接続しない従来の動作（すべての操作が使える）に戻す。
     console.error("firebase sdk load failed", error);
@@ -215,14 +466,20 @@ async function start() {
     return;
   }
   mapApp.setRole("viewer");
+  mapApp.onLocalChange(handleLocalChange);
+  mapApp.setUnloadGuard(hasUnsavedWork);
   const firebaseApp = sdk.initializeApp(FIREBASE_CONFIG);
-  const db = sdk.initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
-  const mapRef = sdk.doc(db, "maps", "main");
+  db = sdk.initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
+  mapRef = sdk.doc(db, "maps", "main");
   window.setTimeout(() => { if (!state.initialShown) showFallback(); }, FIRST_SNAPSHOT_TIMEOUT_MS);
   sdk.onSnapshot(mapRef, { includeMetadataChanges: true }, handleSnapshot, (error) => {
     console.error("map snapshot failed", error);
     showFallback();
   });
+  // ログイン状態はブラウザに保持する（browserLocalPersistence）。
+  auth = sdk.initializeAuth(firebaseApp, { persistence: sdk.browserLocalPersistence });
+  setupLoginUi();
+  sdk.onAuthStateChanged(auth, handleAuthChanged);
 }
 window.addEventListener("online", () => { state.online = true; refreshUi(); });
 window.addEventListener("offline", () => { state.online = false; refreshUi(); });

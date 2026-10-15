@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSaver() {
+      return request.auth != null
+        && request.auth.token.email.matches('^[a-z0-9_-]+@saver[.]alliance-map[.]app$');
+    }
+    match /maps/{mapId} {
+      allow read: if true;
+      allow write: if isSaver();
+      match /history/{historyId} {
+        allow read: if true;
+        allow create, update, delete: if isSaver();
+      }
+    }
+  }
+}
