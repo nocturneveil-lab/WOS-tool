@@ -91,8 +91,7 @@ let historyRef = null;
 const el = {
   controls: document.getElementById("cloudControls"),
   status: document.getElementById("cloudStatus"),
-  roleBadge: document.getElementById("roleBadge"),
-  loginButton: document.getElementById("loginButton"),
+  accountButton: document.getElementById("accountButton"),
   loginDialog: document.getElementById("loginDialog"),
   loginForm: document.getElementById("loginForm"),
   loginTabs: Array.from(document.querySelectorAll("[data-login-mode]")),
@@ -119,15 +118,51 @@ const el = {
 };
 
 // ---- 表示まわり ----
+// ヘッダー用の線画アイコン（固定の文字列なので innerHTML で入れてよい）。
+const ICONS = {
+  saved: '<path d="M5 12l5 5L20 7"/>',
+  saving: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  error: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A5 5 0 0 0 6 18h11"/><path d="M11 6.1A6 6 0 0 1 18 11a4 4 0 0 1 3 5.4"/>',
+  sync: '<path d="M7 18a5 5 0 0 1-.4-10A7 7 0 0 1 20 10a4 4 0 0 1-1 8z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>'
+};
+function iconElement(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = ICONS[name];
+  return svg;
+}
+// 広い画面では long、狭い画面では short を表示する（CSS の .label-long / .label-short）。
+function labelElements(long, short) {
+  const longLabel = document.createElement("span");
+  longLabel.className = "label-long";
+  longLabel.textContent = long;
+  const shortLabel = document.createElement("span");
+  shortLabel.className = "label-short";
+  shortLabel.textContent = short || long;
+  return [longLabel, shortLabel];
+}
+// options: { short, icon, error, action:{label, onClick} }
+// action があるときは、表示全体を押せるボタンにする（狭い画面でも押しやすく、幅も増えない）。
 function setCloudStatus(text, options) {
-  el.status.textContent = text;
-  el.status.classList.toggle("error", !!(options && options.error));
-  if (options && options.action) {
+  const opts = options || {};
+  const parts = [iconElement(opts.icon || "sync"), ...labelElements(text, opts.short)];
+  el.status.classList.toggle("error", !!opts.error);
+  el.status.title = text;
+  if (opts.action) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = options.action.label;
-    button.addEventListener("click", options.action.onClick);
-    el.status.appendChild(button);
+    button.title = opts.action.label;
+    button.append(...parts);
+    button.addEventListener("click", opts.action.onClick);
+    el.status.replaceChildren(button);
+  } else {
+    el.status.replaceChildren(...parts);
   }
 }
 // actions: [{label, onClick}]
@@ -268,25 +303,41 @@ function refreshBanner() {
 function refreshStatus() {
   if (state.role === "saver" && state.remote && !state.showingFallback) {
     const pending = state.dirty || state.saving;
-    if (state.saveError) setCloudStatus("保存失敗", { error: true, action: { label: "再試行", onClick: saveNow } });
-    else if (!state.online) setCloudStatus(pending ? "オフライン（未保存の変更あり）" : "オフライン", { error: true });
-    else if (pending) setCloudStatus("保存中…");
-    else {
+    if (state.saveError) {
+      // 狭い画面では「↻失敗」（赤字・押すと再試行）。
+      setCloudStatus("保存失敗（押して再試行）", { short: "失敗", icon: "saving", error: true, action: { label: "再試行", onClick: saveNow } });
+    } else if (!state.online) {
+      setCloudStatus(pending ? "オフライン（未保存の変更あり）" : "オフライン", { short: pending ? "未保存" : "圏外", icon: "offline", error: true });
+    } else if (pending) {
+      setCloudStatus("保存中…", { short: "保存中", icon: "saving" });
+    } else {
       const savedAt = state.lastSavedAt || state.remote.updatedAt;
-      setCloudStatus(savedAt ? "保存済み " + formatTime(savedAt) : "Web同期中");
+      if (savedAt) setCloudStatus("保存済み " + formatTime(savedAt), { short: "保存済", icon: "saved" });
+      else setCloudStatus("Web同期中", { short: "同期中", icon: "sync" });
     }
     return;
   }
-  if (!state.online) setCloudStatus("オフライン", { error: true });
-  else if (state.showingFallback) setCloudStatus("オフライン表示");
-  else if (state.remote) setCloudStatus("Web同期中");
-  else setCloudStatus("接続中…");
+  if (!state.online) setCloudStatus("オフライン", { short: "圏外", icon: "offline", error: true });
+  else if (state.showingFallback) setCloudStatus("オフライン表示", { short: "未接続", icon: "offline" });
+  else if (state.remote) setCloudStatus("Web同期中", { short: "同期中", icon: "sync" });
+  else setCloudStatus("接続中…", { short: "接続中", icon: "saving" });
 }
+// ログイン状態の表示とログイン・ログアウトを1つのボタンにまとめる。
 function refreshRole() {
-  el.roleBadge.setAttribute("data-role", state.role);
-  el.roleBadge.textContent = state.role === "saver" ? "保存可：" + state.account :
-    state.role === "editor" ? "編集" : "閲覧";
-  el.loginButton.textContent = state.role === "viewer" ? "ログイン" : "ログアウト";
+  const button = el.accountButton;
+  button.setAttribute("data-role", state.role);
+  if (state.role === "viewer") {
+    button.replaceChildren(iconElement("login"), ...labelElements("ログイン", "ログイン"));
+    button.title = "ログイン（現在は閲覧のみ）";
+  } else {
+    const long = state.role === "saver" ? "保存可：" + state.account : "編集（保存不可）";
+    const short = state.role === "saver" ? state.account : "編集";
+    const action = document.createElement("span");
+    action.className = "label-long account-action";
+    action.textContent = "ログアウト";
+    button.replaceChildren(iconElement(state.role === "saver" ? "user" : "edit"), ...labelElements(long, short), action);
+    button.title = long + "（押すとログアウト）";
+  }
   el.historyButton.hidden = state.role === "viewer";
 }
 function refreshUi() {
@@ -797,9 +848,15 @@ async function logout() {
   }
 }
 function setupLoginUi() {
-  el.loginButton.addEventListener("click", () => {
-    if (state.role === "viewer") openLoginDialog();
-    else logout();
+  el.accountButton.addEventListener("click", () => {
+    if (state.role === "viewer") {
+      openLoginDialog();
+      return;
+    }
+    // ログイン状態の表示も兼ねるボタンなので、うっかり押してもすぐにはログアウトしない。
+    // 保存されていない変更があるときは logout() 側で警告する。
+    if (!hasUnsavedWork() && !window.confirm("ログアウトしますか？")) return;
+    logout();
   });
   el.loginTabs.forEach((tab) => {
     tab.addEventListener("click", () => setLoginMode(tab.getAttribute("data-login-mode")));
