@@ -38,7 +38,7 @@
 
 ## Firebase の設定
 
-プロジェクト：`alliance-map-fbbf6`。設定値は `cloud.js` の先頭にあります（apiKey は公開してよい値です）。
+プロジェクト：`alliance-map-fbbf6`。設定値は `cloud-shared.js` の先頭にあります（apiKey は公開してよい値です）。
 
 ### 初期設定（済みの項目は飛ばしてよい）
 
@@ -77,11 +77,27 @@
 Web のマップや履歴を読み込むとき、知らない種類のIDが含まれていると「未対応のデータ」として読み込みを拒否します。
 
 - **種類を追加するときは、先にコードを push してから、その種類を配置してください。** 古いコードのままの画面（キャッシュされたページなど）では、新しい種類を含むマップを読み込めません。push 後、全員がページを再読み込みしてから配置するのが安全です。
-- **既存の種類のID（`headquarters`・`flag`・`city`・`bearTrap`・`allianceBuilding`・`largeGatheringSite`・`unavailable`）は削除・変更しないでください。** Web のマップや履歴、バックアップの JSON に残っているデータが読み込めなくなります。表示名（`TYPE_LABELS`）や色は変更して構いません。
+- **既存の種類のID（`headquarters`・`flag`・`city`・`bearTrap`・`allianceBuilding`・`largeGatheringSite`・`unavailable`）は削除・変更しないでください。** Web のマップや履歴、バックアップの JSON に残っているデータが読み込めなくなります。表示名（`map-core.js` の `TYPE_LABELS`）や色は変更して構いません。
 
 ## ファイル構成
 
-- `index.html`：マップ本体（表示・編集）
-- `cloud.js`：Web 保存・同期・ログイン・履歴（Firebase SDK 13.0.0 を gstatic から読み込み）
-- `firestore.rules`：Firestore のセキュリティルール
-- `default-layout.json`：公開用の配置（オフライン表示・初回の登録用）
+ビルドは不要です。ファイルをそのまま push すれば GitHub Pages で動きます。
+
+| ファイル | 役割 |
+|---|---|
+| `index.html` | 画面の骨組み（HTML）だけ。CSS と下記のスクリプトを読み込む |
+| `style.css` | 見た目（ライト／ダーク、狭い画面用の表示、権限による表示の出し分け） |
+| `map-core.js` | グリッドの計算、マップの状態（配置・選択中のオブジェクト）、描画、レイアウトの検証と読み書き（`getLayout` / `applyLayout`）、ブラウザに保存する設定、PNG/SVG出力 |
+| `map-edit.js` | マップ上の操作：配置・消去・選択・移動、ひとつ戻る、ドラッグ（移動・パン）、ピンチやCtrl+ホイールでのズーム、長押し・右クリックでの名称変更 |
+| `map-ui.js` | ツールバー、ツール一覧と「⋯」メニュー、選択中のバー、名前入力・画像プレビュー・設定の各ダイアログ、ファイルの保存・読み込み、リセット |
+| `map-app.js` | 権限（閲覧・編集・保存可）の切り替え、`window.AllianceMapApp`（cloud.js との窓口）、起動処理 |
+| `cloud.js` | Web 保存の起動処理（Firebase SDK 13.0.0 を gstatic から読み込み、接続して受信・ログインを開始する） |
+| `cloud-shared.js` | cloud-*.js の共通部分：Firebase の設定と接続、状態（`state`）、ヘッダーの状態表示・帯・トーストなどの部品、レイアウトの比較用キー |
+| `cloud-sync.js` | Web のマップの受信と適用、保存可の自動保存、ヘッダーの保存状態と帯の表示、公開用の配置の登録、初期表示の保存 |
+| `cloud-history.js` | 履歴の一覧・プレビュー・復元・名前付き保存 |
+| `cloud-auth.js` | ログイン・ログアウト、アカウントからの権限の判定、合言葉の変更 |
+| `firestore.rules` | Firestore のセキュリティルール |
+| `default-layout.json` | 公開用の配置（オフライン表示・初回の登録用） |
+
+- `map-*.js` は通常のスクリプトで、`map-core.js` → `map-edit.js` → `map-ui.js` → `map-app.js` の順に読み込みます（後のファイルが前のファイルの関数を使うため、順序を変えないでください）。トップレベルの変数・関数はファイル間で共有されます。
+- `cloud*.js` は ES モジュールです。`index.html` は `cloud.js` だけを読み込み、残りは `import` で読み込まれます。マップの操作は必ず `window.AllianceMapApp` を通します。
