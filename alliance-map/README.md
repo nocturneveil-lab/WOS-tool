@@ -1,7 +1,76 @@
 # Alliance Map
 
-`default-layout.json` is loaded every time the page opens. Map layouts are not kept in the browser, so every visitor sees the published layout after a reload. Keep it in the same published directory as `index.html`.
+マップは Firebase（Cloud Firestore）に保存され、開いている全員の画面にリアルタイムで反映されます。
+**マップを更新するために JSON を差し替えて push する必要はありません。** 保存可能アカウントで編集すると、自動でWebに保存されます。
 
-To update the published default, edit the map, export it with the page's **ファイルに保存** button, and replace `default-layout.json` with that JSON file. The JSON also carries the object colors, map size, bear trap label size, and the initial view (center and zoom). The zoom stored in `default-layout.json` is shown as 100%.
+## 権限
 
-Exported JSON and SVG filenames include the local save date and time to the minute (`YYYY-MM-DD_HH-mm`).
+| 権限 | ログイン | できること |
+|---|---|---|
+| 閲覧 | なし（URLを開くだけ） | 表示、ズーム、パン、画像（PNG/SVG）出力。Webの最新状態がリアルタイムで反映される |
+| 編集 | 合言葉のみ | すべての編集操作。ただし**変更はそのブラウザ内だけ**で、Webには保存されない。［最新に戻す］でWebの状態に戻せる。履歴の閲覧とプレビュー |
+| 保存可 | アカウント名＋合言葉 | 編集内容をWebへ自動保存。履歴からの復元、名前付き保存、共有設定（色・MAPサイズ・熊罠の文字サイズ・初期表示）の保存、JSONのバックアップと読み込み |
+
+- 保存可で編集すると、最後の変更から約1秒後に自動保存されます。ヘッダーに「保存済み」「保存中…」「保存失敗［再試行］」「オフライン」と表示されます。
+- 他の人とほぼ同時に保存した場合は、後から保存した側の内容になります。上書きされた内容は履歴（編集開始前）から復元できます。
+- 初期表示（開いたときの中心とズーム）は、保存可が「設定」→「現在の表示を初期表示にする」で変更します。ほかの人の表示位置が勝手に動くことはありません。
+- ログイン状態はブラウザに保持されます。合言葉は保存されません（保存可のアカウント名だけ記憶します）。
+
+## 履歴
+
+「履歴」ボタン（編集・保存可）から開きます。
+
+- **編集開始前**：保存可が、しばらく（10分以上）ぶりに変更を保存する直前の状態。
+- **復元前**：履歴から復元する直前の状態。
+- **名前付き保存（★）**：「現在の状態に名前を付けて保存」で作成。最大20件。自動では削除されません。
+- 自動の履歴（編集開始前・復元前）は最新30件だけ残り、古いものから削除されます。
+- ［プレビュー］は自分の画面にだけ表示されます。［復元］は保存可だけが使え、全員のマップが置き換わります。
+
+## Webに接続できないとき
+
+- Webに接続できない場合や、Webにマップが未登録の場合は、`default-layout.json`（公開用の配置）を表示し、「オフライン表示」と明示します。
+- `file://` で開いた場合など Firebase 自体を読み込めない場合は、従来どおり Web 保存なしで全機能（ファイル保存・読み込みを含む）を使えます。Firebase のログインは `file://` では動かないため、動作確認は Live Server などで `http://localhost` から開いてください。
+- `default-layout.json` はオフライン表示と初回の登録のために残しています。
+
+## Firebase の設定
+
+プロジェクト：`alliance-map-fbbf6`。設定値は `cloud.js` の先頭にあります（apiKey は公開してよい値です）。
+
+### 初期設定（済みの項目は飛ばしてよい）
+
+1. Authentication で「メール/パスワード」方式を有効にする。
+2. Authentication の設定で、新規登録（ユーザーによるアカウント作成）を無効にする。
+3. 承認済みドメインに `nocturneveil-lab.github.io` を追加する。
+4. Firestore を作成する（ロケーション `asia-northeast1`）。
+5. `firestore.rules` の内容をセキュリティルールとして公開する。
+6. push 後、保存可としてログインし、帯の「公開用の配置をWebに登録」を押す（`default-layout.json` の内容が Web に登録されます）。
+
+### アカウント管理
+
+アプリの画面にメールアドレスは表示されませんが、内部では Firebase Authentication の「メール/パスワード」を使っています。
+どの操作も Firebase コンソールの Authentication →「ユーザー」で行います。
+
+| 操作 | 手順 |
+|---|---|
+| 編集の合言葉を設定 | 「ユーザーを追加」。メールに `editor@alliance-map.app`、パスワードに合言葉（6文字以上）を入力する |
+| 編集の合言葉を変更 | 上記のユーザーを削除し、同じメールアドレスで新しい合言葉を設定して作り直す |
+| 保存可能な人を追加 | 「ユーザーを追加」。メールに `{アカウント名}@saver.alliance-map.app`（アカウント名は半角英小文字・数字・`_`・`-` の1〜20文字）、パスワードにその人の合言葉を入力する |
+| 保存可能な人を削除 | その人のユーザーを削除する（最大1時間で書き込めなくなる） |
+| 保存可能な人の合言葉を変更 | 本人がアプリの「設定」→「自分の合言葉を変更」で変更する。忘れた場合は、管理者がユーザーを削除して同じアカウント名で作り直す |
+
+書き込みの権限は Firestore のセキュリティルール（`firestore.rules`）で強制しています。`@saver.alliance-map.app` のアカウントだけが書き込めるため、保存可能な人を増減してもルールの変更は不要です。
+
+## データの形式
+
+- `maps/main`：現在のマップ。「ファイルに保存」で書き出す JSON と同じ形式に、`updatedAt`・`updatedBy`（アカウント名）・`rev`（保存のたびに +1）を加えたもの。
+- `maps/main/history/{id}`：履歴。`kind`（`before-edit` / `before-restore` / `named`）、`name`（名前付き保存のみ）、`layout`、`createdAt`、`createdBy`。
+
+保存可の「ファイルに保存」で JSON のバックアップを取れます。読み込むと Web のマップが置き換わります（確認が出ます）。
+書き出した JSON と画像のファイル名には、保存した日時（`YYYY-MM-DD_HH-mm`）が入ります。
+
+## ファイル構成
+
+- `index.html`：マップ本体（表示・編集）
+- `cloud.js`：Web 保存・同期・ログイン・履歴（Firebase SDK 13.0.0 を gstatic から読み込み）
+- `firestore.rules`：Firestore のセキュリティルール
+- `default-layout.json`：公開用の配置（オフライン表示・初回の登録用）
