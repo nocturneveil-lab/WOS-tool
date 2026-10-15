@@ -1,6 +1,7 @@
 // ツールバー・「⋯」メニュー・ダイアログ・設定。
 "use strict";
 
+// ---- お知らせ（画面下のトースト） ----
 var toastTimer = 0;
 function showMessage(text){
   var toast = document.getElementById("cloudToast");
@@ -9,6 +10,18 @@ function showMessage(text){
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(function(){ toast.hidden = true; }, 3000);
 }
+// ダイアログの外側（背景）を押すか Esc キーで閉じる。
+// Esc のリスナーは登録順に呼ばれる（後に登録した選択解除などより先に閉じる）ので、呼ぶ順序を変えないこと。
+function closeDialogOnDismiss(dialog, close){
+  dialog.addEventListener("click", function(event){
+    if (event.target === dialog) close();
+  });
+  document.addEventListener("keydown", function(event){
+    if (event.key === "Escape" && !dialog.hidden) close();
+  });
+}
+
+// ---- リセット・ファイルに保存・読み込み ----
 document.getElementById("resetMapAction").addEventListener("click", function(){
   if (!placements.length && !Object.keys(classifications).some(function(key){ return classifications[key] !== "none"; }) && panX === (VIEW_W / 2 - CX * zoomBase) && panY === (VIEW_H / 2 - CY * zoomBase) && zoom === zoomBase) return;
   var resetMessage = currentRole === "saver" ?
@@ -25,21 +38,41 @@ document.getElementById("resetMapAction").addEventListener("click", function(){
   updateZoomReadout();
   render();
 });
-var layoutFileInput = document.getElementById("layoutFileInput");
 document.getElementById("saveLayoutButton").addEventListener("click", function(){
   var savedAt = new Date();
   var layout = getLayout();
   layout.savedAt = savedAt.toISOString();
-  downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }),
-    "alliance-map-" + formatFileTimestamp(savedAt) + ".json");
+  downloadFile(new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" }), exportFileName(savedAt, "json"));
   hasUnsavedChanges = false;
   showMessage("JSONを保存しました");
 });
+var layoutFileInput = document.getElementById("layoutFileInput");
+document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
+layoutFileInput.addEventListener("change", function(){
+  var file = layoutFileInput.files && layoutFileInput.files[0];
+  if (!file) return;
+  if (currentRole === "saver" && !window.confirm("Webのマップを置き換えます（読み込み前の状態は履歴から戻せます）。よろしいですか？")){
+    layoutFileInput.value = "";
+    return;
+  }
+  file.text().then(function(text){
+    var previousLayout = getLayout();
+    applyLayout(JSON.parse(text), { source: "file" });
+    emitLocalChange("file", previousLayout);
+    showMessage("配置を読み込みました");
+  }).catch(function(error){
+    showMessage("読み込めません: " + error.message);
+  }).finally(function(){
+    layoutFileInput.value = "";
+  });
+});
+
+// ---- 画像出力（SVG・PNG） ----
 document.getElementById("exportSvgButton").addEventListener("click", function(){
-  downloadFile(new Blob([buildExportSvg()], { type: "image/svg+xml" }),
-    "alliance-map-" + formatFileTimestamp(new Date()) + ".svg");
+  downloadFile(new Blob([buildExportSvg()], { type: "image/svg+xml" }), exportFileName(new Date(), "svg"));
   showMessage("SVGを出力しました");
 });
+// スマホではプレビューを開き、長押し保存か共有ボタンで渡せるようにする。
 var imagePreviewDialog = document.getElementById("imagePreviewDialog");
 var imagePreview = document.getElementById("imagePreview");
 var shareImageButton = document.getElementById("shareImage");
@@ -60,7 +93,7 @@ function closeImagePreview(){
 document.getElementById("exportPngButton").addEventListener("click", function(){
   showMessage("画像を作成しています…");
   renderPngBlob(function(blob){
-    var fileName = "alliance-map-" + formatFileTimestamp(new Date()) + ".png";
+    var fileName = exportFileName(new Date(), "png");
     if (isTouchDevice()){
       openImagePreview(new File([blob], fileName, { type: "image/png" }));
       showMessage("画像を作成しました");
@@ -80,31 +113,9 @@ document.getElementById("downloadImage").addEventListener("click", function(){
   if (previewFile) downloadFile(previewFile, previewFile.name);
 });
 document.getElementById("closeImagePreview").addEventListener("click", closeImagePreview);
-imagePreviewDialog.addEventListener("click", function(event){
-  if (event.target === imagePreviewDialog) closeImagePreview();
-});
-document.addEventListener("keydown", function(event){
-  if (event.key === "Escape" && !imagePreviewDialog.hidden) closeImagePreview();
-});
-document.getElementById("loadLayoutButton").addEventListener("click", function(){ layoutFileInput.click(); });
-layoutFileInput.addEventListener("change", function(){
-  var file = layoutFileInput.files && layoutFileInput.files[0];
-  if (!file) return;
-  if (currentRole === "saver" && !window.confirm("Webのマップを置き換えます（読み込み前の状態は履歴から戻せます）。よろしいですか？")){
-    layoutFileInput.value = "";
-    return;
-  }
-  file.text().then(function(text){
-    var previousLayout = getLayout();
-    applyLayout(JSON.parse(text), { source: "file" });
-    emitLocalChange("file", previousLayout);
-    showMessage("配置を読み込みました");
-  }).catch(function(error){
-    showMessage("読み込めません: " + error.message);
-  }).finally(function(){
-    layoutFileInput.value = "";
-  });
-});
+closeDialogOnDismiss(imagePreviewDialog, closeImagePreview);
+
+// ---- 名前の入力（配置・名称変更） ----
 var cityNameDialog = document.getElementById("cityNameDialog");
 var cityNameForm = document.getElementById("cityNameForm");
 var cityNameInput = document.getElementById("cityNameInput");
@@ -112,6 +123,7 @@ var cityNameTextarea = document.getElementById("cityNameTextarea");
 var activeNameField = cityNameInput;
 var cityNameTitle = document.getElementById("cityNameTitle");
 var cityNameSubmit = document.getElementById("cityNameSubmit");
+// 新規配置なら { anchor }、名称変更なら { placement }。
 var pendingCity = null;
 // multiline のときは改行できる textarea（熊罠用）、それ以外は1行の input を使う。
 function showNameDialog(title, submitText, value, required, placeholder, multiline){
@@ -169,29 +181,23 @@ cityNameForm.addEventListener("submit", function(event){
   closeNameDialog();
 });
 document.getElementById("cancelCityName").addEventListener("click", closeNameDialog);
-cityNameDialog.addEventListener("click", function(event){
-  if (event.target === cityNameDialog) closeNameDialog();
-});
-document.addEventListener("keydown", function(event){
-  if (event.key === "Escape" && !cityNameDialog.hidden) closeNameDialog();
-});
-var labelSizeInput = document.getElementById("labelSizeInput");
-var labelSizeOutput = document.getElementById("labelSizeOutput");
+closeDialogOnDismiss(cityNameDialog, closeNameDialog);
+
+// ---- 設定（MAPサイズ・熊罠の文字サイズ・オブジェクトの色） ----
 var mapColsInput = document.getElementById("mapColsInput");
 var mapRowsInput = document.getElementById("mapRowsInput");
-var editModeToggle = document.getElementById("editModeToggle");
-// ヘッダー（広い画面）と「⋯」メニュー（狭い画面）の両方に表示する。
-var zoomValues = Array.from(document.querySelectorAll(".zoom-value"));
-function updateZoomReadout(){
-  var text = Math.round(zoom / zoomBase * 100) + "%";
-  zoomValues.forEach(function(node){ node.textContent = text; });
-}
+var bearTrapLabelSizeInput = document.getElementById("bearTrapLabelSizeInput");
 var objectColorDialog = document.getElementById("objectColorDialog");
 var objectColorForm = document.getElementById("objectColorForm");
 var objectColorInputs = Array.from(objectColorForm.querySelectorAll("[data-object-color]"));
 function refreshObjectColorInputs(){
   objectColorInputs.forEach(function(input){ input.value = TYPE_COLORS[input.getAttribute("data-object-color")]; });
 }
+function refreshMapRangeInputs(){
+  mapColsInput.value = String(mapCols);
+  mapRowsInput.value = String(mapRows);
+}
+// ツールボタンの色の丸を、設定した色に合わせる。
 function updateMapToolColors(){
   document.querySelectorAll(".map-tool[data-type]").forEach(function(button){
     var type = button.getAttribute("data-type");
@@ -199,7 +205,6 @@ function updateMapToolColors(){
   });
 }
 function closeObjectColorDialog(){ objectColorDialog.hidden = true; }
-var bearTrapLabelSizeInput = document.getElementById("bearTrapLabelSizeInput");
 document.getElementById("openObjectColorSettings").addEventListener("click", function(){
   refreshObjectColorInputs();
   refreshMapRangeInputs();
@@ -211,55 +216,54 @@ document.getElementById("cancelObjectColors").addEventListener("click", closeObj
 document.getElementById("resetObjectColors").addEventListener("click", function(){
   objectColorInputs.forEach(function(input){ input.value = DEFAULT_TYPE_COLORS[input.getAttribute("data-object-color")]; });
 });
-objectColorDialog.addEventListener("click", function(event){
-  if (event.target === objectColorDialog) closeObjectColorDialog();
-});
-document.addEventListener("keydown", function(event){
-  if (event.key === "Escape" && !objectColorDialog.hidden) closeObjectColorDialog();
-});
+closeDialogOnDismiss(objectColorDialog, closeObjectColorDialog);
+// 全員共通の設定（変わったときだけWebに保存する）。
 function getSharedSettingsKey(){
   return JSON.stringify([TYPE_COLORS, bearTrapLabelSize, mapCols, mapRows]);
+}
+function applyMapRange(){
+  mapCols = clampMapSize(mapColsInput.value);
+  mapRows = clampMapSize(mapRowsInput.value);
+  refreshMapRangeInputs();
+  saveMapRange();
+  updateGridMetrics();
+  render();
 }
 objectColorForm.addEventListener("submit", function(event){
   event.preventDefault();
   var previousSettings = getSharedSettingsKey();
   objectColorInputs.forEach(function(input){ TYPE_COLORS[input.getAttribute("data-object-color")] = input.value.toLowerCase(); });
   saveTypeColors();
-  bearTrapLabelSize = clampMapSize(bearTrapLabelSizeInput.value, bearTrapLabelSize, 6, 30);
+  bearTrapLabelSize = clampBearTrapLabelSize(bearTrapLabelSizeInput.value, bearTrapLabelSize);
   saveBearTrapLabelSize();
   updateMapToolColors();
   closeObjectColorDialog();
   applyMapRange();
   if (getSharedSettingsKey() !== previousSettings) markLayoutChanged("settings");
 });
-refreshObjectColorInputs();
-updateMapToolColors();
-function refreshMapRangeInputs(){
-  mapColsInput.value = String(mapCols);
-  mapRowsInput.value = String(mapRows);
-}
+
+// ---- 文字サイズ・ズーム表示 ----
+var labelSizeInput = document.getElementById("labelSizeInput");
+var labelSizeOutput = document.getElementById("labelSizeOutput");
 function refreshLabelSizeInput(){
   labelSizeInput.value = String(labelScale);
   labelSizeOutput.textContent = Math.round(labelScale) + " px";
 }
-refreshLabelSizeInput();
-refreshMapRangeInputs();
 labelSizeInput.addEventListener("input", function(){
-  labelScale = Number(labelSizeInput.value);
-  labelScale = Math.min(12, Math.max(6, labelScale));
+  labelScale = Math.min(LABEL_SCALE_MAX, Math.max(LABEL_SCALE_MIN, Number(labelSizeInput.value)));
   refreshLabelSizeInput();
-  try{ localStorage.setItem(LABEL_SIZE_KEY, String(labelScale)); }
-  catch(e){ console.error("label size save failed", e); }
+  saveSetting(LABEL_SIZE_KEY, String(labelScale));
   render();
 });
-function applyMapRange(){
-  mapCols = clampMapSize(mapColsInput.value, 32, 10, 80);
-  mapRows = clampMapSize(mapRowsInput.value, 32, 10, 80);
-  refreshMapRangeInputs();
-  saveMapRange();
-  updateGridMetrics();
-  render();
+// ヘッダー（広い画面）と「⋯」メニュー（狭い画面）の両方に表示する。
+var zoomValues = Array.from(document.querySelectorAll(".zoom-value"));
+function updateZoomReadout(){
+  var text = Math.round(zoom / zoomBase * 100) + "%";
+  zoomValues.forEach(function(node){ node.textContent = text; });
 }
+
+// ---- 編集モード・閲覧モード ----
+var editModeToggle = document.getElementById("editModeToggle");
 function updateEditModeButton(){
   editModeToggle.classList.toggle("active", editMode);
   editModeToggle.classList.toggle("view-mode", !editMode);
@@ -277,6 +281,7 @@ editModeToggle.addEventListener("click", function(){
   updateMapCursor();
   render();
 });
+
 // ---- ツール一覧と「⋯」メニュー（すべての幅で、ボタンの下に開くポップアップ） ----
 var mapControls = document.querySelector(".map-controls");
 var toolPickerButton = document.getElementById("toolPickerButton");
@@ -305,16 +310,13 @@ function closeMenus(){
 function isMenuOpen(){
   return toolList.classList.contains("open") || moreMenu.classList.contains("open");
 }
-toolPickerButton.addEventListener("click", function(){
-  var open = !toolList.classList.contains("open");
+function toggleMenu(popup, toggle){
+  var open = !popup.classList.contains("open");
   closeMenus();
-  setMenuOpen(toolList, toolPickerButton, open);
-});
-moreMenuButton.addEventListener("click", function(){
-  var open = !moreMenu.classList.contains("open");
-  closeMenus();
-  setMenuOpen(moreMenu, moreMenuButton, open);
-});
+  setMenuOpen(popup, toggle, open);
+}
+toolPickerButton.addEventListener("click", function(){ toggleMenu(toolList, toolPickerButton); });
+moreMenuButton.addEventListener("click", function(){ toggleMenu(moreMenu, moreMenuButton); });
 // メニューの項目（ボタン）を選んだら閉じる。文字サイズのスライダーでは閉じない。
 moreMenu.addEventListener("click", function(event){
   if (event.target.closest("button")) closeMenus();
@@ -349,7 +351,7 @@ toolButtons.forEach(function(button){
     updateToolPicker();
   });
 });
-updateToolPicker();
+
 // ---- 選択中のオブジェクトの操作 ----
 var selectionBar = document.getElementById("selectionBar");
 var selectionSwatch = document.getElementById("selectionSwatch");
@@ -378,5 +380,12 @@ document.addEventListener("keydown", function(event){
     setSelection(null);
   }
 });
+
+// ---- 初期表示 ----
+refreshObjectColorInputs();
+updateMapToolColors();
+refreshLabelSizeInput();
+refreshMapRangeInputs();
+updateToolPicker();
 updateEditModeButton();
 updateMapCursor();

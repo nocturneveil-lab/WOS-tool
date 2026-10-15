@@ -1,73 +1,70 @@
 // グリッド計算・マップの状態・描画・レイアウトの読み書き・PNG/SVG出力。
 "use strict";
 
-function formatFileTimestamp(date){
-  function pad(value){ return String(value).padStart(2, "0"); }
-  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
-    "_" + pad(date.getHours()) + "-" + pad(date.getMinutes());
-}
-// ---- グリッド設定 ----
-// 全体範囲は中心を基準に左右・上下に広がるように設定する。
-var GRID_N;
+// ---- 設定の保存（ブラウザ） ----
 var LABEL_SIZE_KEY = "alliance_map_label_size_v1";
 var MAP_COLS_KEY = "alliance_map_cols_v1";
 var MAP_ROWS_KEY = "alliance_map_rows_v1";
-var mapCols = 32;
-var mapRows = 32;
-var labelScale = 8;
-function loadIntegerSetting(key, fallback, minValue, maxValue){
+var BEAR_TRAP_LABEL_SIZE_KEY = "alliance_map_bear_trap_label_size_v1";
+var OBJECT_COLOR_KEY = "alliance_map_object_colors_v1";
+var CELL_KEY_PATTERN = /^-?\d+_-?\d+$/;
+var COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+function parseInteger(value){ return parseInt(value, 10); }
+function loadNumberSetting(key, fallback, minValue, maxValue, parse){
   try{
-    var saved = parseInt(localStorage.getItem(key), 10);
+    var saved = parse(localStorage.getItem(key));
     if (!isNaN(saved) && saved >= minValue && saved <= maxValue) return saved;
   }catch(e){ console.error("setting load failed", e); }
   return fallback;
 }
-function clampMapSize(value, fallback, minValue, maxValue){
+function saveSetting(key, value){
+  try{ localStorage.setItem(key, value); }
+  catch(e){ console.error("setting save failed", e); }
+}
+function clampInteger(value, fallback, minValue, maxValue){
   var numeric = parseInt(value, 10);
   if (isNaN(numeric)) return fallback;
   return Math.max(minValue, Math.min(maxValue, numeric));
 }
+
+// MAPサイズ（マス数）。全体範囲は中心を基準に左右・上下に広がる。
+var MAP_SIZE_DEFAULT = 32, MAP_SIZE_MIN = 10, MAP_SIZE_MAX = 80;
+function clampMapSize(value){ return clampInteger(value, MAP_SIZE_DEFAULT, MAP_SIZE_MIN, MAP_SIZE_MAX); }
+var mapCols = loadNumberSetting(MAP_COLS_KEY, MAP_SIZE_DEFAULT, MAP_SIZE_MIN, MAP_SIZE_MAX, parseInteger);
+var mapRows = loadNumberSetting(MAP_ROWS_KEY, MAP_SIZE_DEFAULT, MAP_SIZE_MIN, MAP_SIZE_MAX, parseInteger);
 function saveMapRange(){
-  try{
-    localStorage.setItem(MAP_COLS_KEY, String(mapCols));
-    localStorage.setItem(MAP_ROWS_KEY, String(mapRows));
-  }catch(e){ console.error("map range save failed", e); }
+  saveSetting(MAP_COLS_KEY, String(mapCols));
+  saveSetting(MAP_ROWS_KEY, String(mapRows));
 }
-function loadLabelScale(){
-  try{
-    var saved = parseFloat(localStorage.getItem(LABEL_SIZE_KEY));
-    if (!isNaN(saved) && saved >= 6 && saved <= 12) return saved;
-  }catch(e){ console.error("label scale load failed", e); }
-  return 8;
-}
-mapCols = loadIntegerSetting(MAP_COLS_KEY, 32, 10, 80);
-mapRows = loadIntegerSetting(MAP_ROWS_KEY, 32, 10, 80);
-labelScale = loadLabelScale();
+// 「文字サイズ」スライダーの値（熊罠以外の名前の文字サイズ）。
+var LABEL_SCALE_MIN = 6, LABEL_SCALE_MAX = 12;
+var labelScale = loadNumberSetting(LABEL_SIZE_KEY, 8, LABEL_SCALE_MIN, LABEL_SCALE_MAX, parseFloat);
 // 熊罠の文字サイズは「文字サイズ」スライダーとは独立した固定値。
-var BEAR_TRAP_LABEL_SIZE_KEY = "alliance_map_bear_trap_label_size_v1";
 var DEFAULT_BEAR_TRAP_LABEL_SIZE = 12;
-var bearTrapLabelSize = loadIntegerSetting(BEAR_TRAP_LABEL_SIZE_KEY, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30);
-function saveBearTrapLabelSize(){
-  try{ localStorage.setItem(BEAR_TRAP_LABEL_SIZE_KEY, String(bearTrapLabelSize)); }
-  catch(e){ console.error("bear trap label size save failed", e); }
-}
+var BEAR_TRAP_LABEL_SIZE_MIN = 6, BEAR_TRAP_LABEL_SIZE_MAX = 30;
+function clampBearTrapLabelSize(value, fallback){ return clampInteger(value, fallback, BEAR_TRAP_LABEL_SIZE_MIN, BEAR_TRAP_LABEL_SIZE_MAX); }
+var bearTrapLabelSize = loadNumberSetting(BEAR_TRAP_LABEL_SIZE_KEY, DEFAULT_BEAR_TRAP_LABEL_SIZE, BEAR_TRAP_LABEL_SIZE_MIN, BEAR_TRAP_LABEL_SIZE_MAX, parseInteger);
+function saveBearTrapLabelSize(){ saveSetting(BEAR_TRAP_LABEL_SIZE_KEY, String(bearTrapLabelSize)); }
+
+// ---- グリッドと表示位置 ----
 var panX = 0, panY = 0;
 var zoom = 2.5;
 // 表示上の100%にあたる実ズーム。公開用の初期配置を読み込んだときのズームを基準にする。
 var zoomBase = 2.5;
+function clampZoom(value){ return Math.max(0.25, Math.min(4, value)); }
 var mapHeight;
 var VIEW_W, VIEW_H, HW, HH, CX, CY;
 var COORD_ORIGIN_CELL = { col: 10, row: -13 };
 var COORD_ORIGIN_POINT = { x: 659, y: 389 };
 function updateGridMetrics(){
-  mapCols = clampMapSize(mapCols, 32, 10, 80);
-  mapRows = clampMapSize(mapRows, 32, 10, 80);
+  mapCols = clampMapSize(mapCols);
+  mapRows = clampMapSize(mapRows);
   mapHeight = Math.max(1, window.innerHeight - document.querySelector(".map-controls").offsetHeight);
   var minDimension = Math.min(window.innerWidth, mapHeight);
-  GRID_N = Math.max(1, Math.max(mapCols, mapRows));
+  var gridSize = Math.max(1, Math.max(mapCols, mapRows));
   VIEW_W = 900 * window.innerWidth / minDimension;
   VIEW_H = 900 * mapHeight / minDimension;
-  HW = HH = 900 / (2 * GRID_N);
+  HW = HH = 900 / (2 * gridSize);
   CX = VIEW_W / 2;
   CY = VIEW_H / 2;
 }
@@ -88,6 +85,12 @@ function centerMapView(){
 }
 updateGridMetrics();
 centerMapView();
+window.addEventListener("resize", function(){
+  var center = getViewCenter();
+  updateGridMetrics();
+  setViewCenter(center);
+  render();
+});
 
 function toScreen(x, y){
   return {
@@ -95,35 +98,118 @@ function toScreen(x, y){
     y: CY + (x + y) * HH
   };
 }
-
-function cellPolygon(col, row){
-  var pts = [
-    toScreen(col - 0.5, row - 0.5),
-    toScreen(col + 0.5, row - 0.5),
-    toScreen(col + 0.5, row + 0.5),
-    toScreen(col - 0.5, row + 0.5)
-  ];
-  return pts.map(function(p){ return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join(" ");
+function clientToSvg(clientX, clientY){
+  var bounds = svg.getBoundingClientRect();
+  return {
+    x: (clientX - bounds.left) * VIEW_W / bounds.width,
+    y: (clientY - bounds.top) * VIEW_H / bounds.height
+  };
 }
-var OBJECT_COLOR_KEY = "alliance_map_object_colors_v1";
+function cellKeyAtClientPoint(clientX, clientY){
+  var point = clientToSvg(clientX, clientY);
+  var worldX = (point.x - panX) / zoom;
+  var worldY = (point.y - panY) / zoom;
+  var dx = (worldX - CX) / HW;
+  var dy = (worldY - CY) / HH;
+  return Math.round((dx + dy) / 2) + "_" + Math.round((dy - dx) / 2);
+}
+// ゲーム内の座標（画面右下に表示する x/y）。
+function getCoordFromKey(cellKey){
+  var parts = cellKey.split("_");
+  var cellCol = parseInt(parts[0], 10);
+  var cellRow = parseInt(parts[1], 10);
+  return {
+    x: COORD_ORIGIN_POINT.x - (cellRow - COORD_ORIGIN_CELL.row),
+    y: COORD_ORIGIN_POINT.y - (cellCol - COORD_ORIGIN_CELL.col)
+  };
+}
+
+// ---- 多角形（SVG の points 文字列） ----
+function formatPoints(points){
+  return points.map(function(point){ return point.x.toFixed(1) + "," + point.y.toFixed(1); }).join(" ");
+}
+function parsePoints(points){
+  return points.split(" ").map(function(point){
+    var pair = point.split(",");
+    return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
+  });
+}
+function polygonCenter(vertices){
+  return vertices.reduce(function(total, point){
+    total.x += point.x / vertices.length;
+    total.y += point.y / vertices.length;
+    return total;
+  }, { x: 0, y: 0 });
+}
+// マス座標で (left, top) を角とする size×size の正方形を、画面上のひし形にする。
+function squarePolygon(left, top, size){
+  return formatPoints([
+    toScreen(left, top),
+    toScreen(left + size, top),
+    toScreen(left + size, top + size),
+    toScreen(left, top + size)
+  ]);
+}
+function cellPolygon(col, row){
+  return squarePolygon(col - 0.5, row - 0.5, 1);
+}
+function placementPolygon(placement){
+  var anchor = placement.anchor.split("_");
+  var size = PLACEMENT_SIZES[placement.type];
+  var offset = 1 - size;
+  return squarePolygon(parseInt(anchor[0], 10) + offset - 0.5, parseInt(anchor[1], 10) + offset - 0.5, size);
+}
+// 中心に向かって縮める（insetScale=1 でそのまま）。
+function cellInsetPolygon(points, insetScale){
+  var vertices = parsePoints(points);
+  var center = polygonCenter(vertices);
+  var inset = Math.max(0, 1 - insetScale);
+  return vertices.map(function(point){
+    return (center.x + (point.x - center.x) * (1 - inset)).toFixed(1) + "," +
+      (center.y + (point.y - center.y) * (1 - inset)).toFixed(1);
+  }).join(" ");
+}
+
+// ---- オブジェクトの種類 ----
 var DEFAULT_TYPE_COLORS = { headquarters: "#ed817a", flag: "#f4d57b", city: "#82b8e8", bearTrap: "#8fcda0", allianceBuilding: "#7d96ff", largeGatheringSite: "#d5a783", unavailable: "#b8b8b8" };
 function loadTypeColors(){
   var colors = Object.assign({}, DEFAULT_TYPE_COLORS);
   try{
     var parsed = JSON.parse(localStorage.getItem(OBJECT_COLOR_KEY) || "{}");
     Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
-      if (parsed && typeof parsed[type] === "string" && /^#[0-9a-fA-F]{6}$/.test(parsed[type])) colors[type] = parsed[type].toLowerCase();
+      if (parsed && typeof parsed[type] === "string" && COLOR_PATTERN.test(parsed[type])) colors[type] = parsed[type].toLowerCase();
     });
   }catch(e){ console.error("object color load failed", e); }
   return colors;
 }
-function saveTypeColors(){
-  try{ localStorage.setItem(OBJECT_COLOR_KEY, JSON.stringify(TYPE_COLORS)); }
-  catch(e){ console.error("object color save failed", e); }
-}
+function saveTypeColors(){ saveSetting(OBJECT_COLOR_KEY, JSON.stringify(TYPE_COLORS)); }
 var TYPE_COLORS = loadTypeColors();
 var TYPE_LABELS = { headquarters: "本部", flag: "旗", city: "都市", bearTrap: "熊罠", allianceBuilding: "同盟建築物", largeGatheringSite: "大型採集場", unavailable: "配置不能" };
 var PLACEMENT_SIZES = { headquarters: 3, bearTrap: 3, city: 2, flag: 1, allianceBuilding: 2, largeGatheringSite: 3, unavailable: 1 };
+// 都市・同盟建築物は名前必須。それ以外は空欄なら種類名（旗・配置不能は表示なし）に戻る。
+function isNameRequired(type){
+  return type === "city" || type === "allianceBuilding";
+}
+function getPlacementLabel(placement){
+  if (placement.name) return placement.name;
+  return placement.type === "flag" || placement.type === "unavailable" ? "" : TYPE_LABELS[placement.type];
+}
+// アンカー（右下のマス）から、オブジェクトが占めるマスの一覧を求める。
+function getPlacementCells(type, anchorKey){
+  var parts = anchorKey.split("_");
+  var col = parseInt(parts[0], 10), row = parseInt(parts[1], 10);
+  var size = PLACEMENT_SIZES[type];
+  var offsets = Array.from({length:size}, function(_, index){ return index - size + 1; });
+  var cells = [];
+  offsets.forEach(function(colOffset){
+    offsets.forEach(function(rowOffset){
+      cells.push((col + colOffset) + "_" + (row + rowOffset));
+    });
+  });
+  return cells;
+}
+
+// ---- マップの状態 ----
 // 配置はWeb（cloud.js）から読み込み、ブラウザには保存しない。
 // Webに接続できないときは default-layout.json を読み込む。
 var classifications = {};
@@ -133,6 +219,7 @@ var editMode = false;
 // 選択中のオブジェクト。配列の入れ替え（ひとつ戻る・Webの更新）をまたいで追えるよう「種類|アンカー」で持つ。
 var selectedKey = null;
 function placementKey(placement){ return placement.type + "|" + placement.anchor; }
+// そのマスにある一番上（配列の後ろ）のオブジェクト。
 function findTopPlacementAt(cellKey){
   for (var layerIndex = placements.length - 1; layerIndex >= 0; layerIndex--){
     if (placements[layerIndex].cells.indexOf(cellKey) !== -1) return placements[layerIndex];
@@ -146,6 +233,8 @@ function getSelectedPlacement(){
   }
   return null;
 }
+
+// ---- 変更の通知 ----
 var hasUnsavedChanges = false;
 var localChangeListeners = [];
 // kind: "edit"（配置・移動・消去・名前変更）、"undo"、"reset"、"settings"、"file"
@@ -166,19 +255,8 @@ window.addEventListener("beforeunload", function(event){
   event.preventDefault();
   event.returnValue = "";
 });
-function getPlacementCells(type, anchorKey){
-  var parts = anchorKey.split("_");
-  var col = parseInt(parts[0], 10), row = parseInt(parts[1], 10);
-  var size = PLACEMENT_SIZES[type];
-  var offsets = Array.from({length:size}, function(_, index){ return index - size + 1; });
-  var cells = [];
-  offsets.forEach(function(colOffset){
-    offsets.forEach(function(rowOffset){
-      cells.push((col + colOffset) + "_" + (row + rowOffset));
-    });
-  });
-  return cells;
-}
+
+// ---- レイアウトの読み書き ----
 // 「ファイルに保存」と同じ形式のレイアウト。Webへの保存にもこの形式を使う。
 function getLayout(){
   return JSON.parse(JSON.stringify({
@@ -191,42 +269,6 @@ function getLayout(){
     view: { center: getViewCenter(), zoom: zoom, mapCols: mapCols, mapRows: mapRows }
   }));
 }
-function downloadFile(blob, fileName){
-  var url = URL.createObjectURL(blob);
-  var link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-}
-// iPhone の写真アプリや Discord は SVG を表示できないため、PNG でも出力する。
-// スマホではプレビューを開き、長押し保存か共有ボタンで渡せるようにする。
-var PNG_EXPORT_SIZE = 2400;
-function renderPngBlob(callback){
-  var svgUrl = URL.createObjectURL(new Blob([buildExportSvg(PNG_EXPORT_SIZE)], { type: "image/svg+xml" }));
-  var image = new Image();
-  image.onload = function(){
-    var canvas = document.createElement("canvas");
-    canvas.width = image.naturalWidth || PNG_EXPORT_SIZE;
-    canvas.height = image.naturalHeight || PNG_EXPORT_SIZE;
-    var context = canvas.getContext("2d");
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(svgUrl);
-    canvas.toBlob(function(blob){
-      if (blob) callback(blob);
-      else showMessage("画像を作成できません");
-    }, "image/png");
-  };
-  image.onerror = function(){
-    URL.revokeObjectURL(svgUrl);
-    showMessage("画像を作成できません");
-  };
-  image.src = svgUrl;
-}
 function applyLayout(imported, options){
   if (!imported || imported.format !== "alliance-map-layout" || imported.version !== 1 ||
       !imported.classifications || typeof imported.classifications !== "object" || Array.isArray(imported.classifications) ||
@@ -236,14 +278,14 @@ function applyLayout(imported, options){
   var nextClassifications = {};
   Object.keys(imported.classifications).forEach(function(key){
     var value = imported.classifications[key];
-    if (!/^-?\d+_-?\d+$/.test(key) || (value !== "none" && !Object.prototype.hasOwnProperty.call(TYPE_COLORS, value))){
+    if (!CELL_KEY_PATTERN.test(key) || (value !== "none" && !Object.prototype.hasOwnProperty.call(TYPE_COLORS, value))){
       throw new Error("セルデータが不正です");
     }
     nextClassifications[key] = value;
   });
   var nextPlacements = imported.placements.map(function(item){
     if (!item || !Object.prototype.hasOwnProperty.call(PLACEMENT_SIZES, item.type) ||
-        typeof item.anchor !== "string" || !/^-?\d+_-?\d+$/.test(item.anchor)){
+        typeof item.anchor !== "string" || !CELL_KEY_PATTERN.test(item.anchor)){
       throw new Error("配置データが不正です");
     }
     var placement = {
@@ -270,21 +312,21 @@ function applyLayout(imported, options){
     Object.keys(DEFAULT_TYPE_COLORS).forEach(function(type){
       var color = imported.objectColors[type];
       if (color !== undefined){
-        if (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("色設定が不正です");
+        if (typeof color !== "string" || !COLOR_PATTERN.test(color)) throw new Error("色設定が不正です");
         nextTypeColors[type] = color.toLowerCase();
       }
     });
   }
   var view = imported.view && typeof imported.view === "object" ? imported.view : {};
-  var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : zoomBase;
+  var nextZoom = Number.isFinite(view.zoom) ? clampZoom(view.zoom) : zoomBase;
   // 表示位置は画面サイズに依存しない view.center（マス単位）で扱う。旧形式の panX/panY は使わない。
   var nextCenter = view.center && typeof view.center === "object" &&
     Number.isFinite(view.center.x) && Number.isFinite(view.center.y) ?
     { x: view.center.x, y: view.center.y } : { x: 0, y: 0 };
-  var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
-  var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 32, 10, 80) : mapRows;
+  var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols) : mapCols;
+  var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows) : mapRows;
   var nextBearTrapLabelSize = Number.isInteger(imported.bearTrapLabelSize) ?
-    clampMapSize(imported.bearTrapLabelSize, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30) : bearTrapLabelSize;
+    clampBearTrapLabelSize(imported.bearTrapLabelSize, DEFAULT_BEAR_TRAP_LABEL_SIZE) : bearTrapLabelSize;
   // ここまでで検証を終え、以降だけで状態を書き換える（途中で例外が起きても状態が壊れないように）。
   // source: "file"（JSON読み込み）、"default"（default-layout.json）、"cloud-initial"（Webの初回）、
   // "cloud"（Webの更新・最新に戻す）、"preview"（履歴のプレビュー）。
@@ -294,10 +336,7 @@ function applyLayout(imported, options){
   var applyView = source === "file" || source === "default" || source === "cloud-initial";
   var keepCenter = applyView ? nextCenter : getViewCenter();
   if (source === "file") rememberMapState();
-  else {
-    undoStack = [];
-    updateUndoButton();
-  }
+  else clearUndoHistory();
   classifications = nextClassifications;
   placements = nextPlacements;
   TYPE_COLORS = nextTypeColors;
@@ -306,8 +345,7 @@ function applyLayout(imported, options){
   if (source === "default" || source === "cloud-initial") zoomBase = zoom;
   mapCols = nextMapCols;
   mapRows = nextMapRows;
-  mapColsInput.value = String(mapCols);
-  mapRowsInput.value = String(mapRows);
+  refreshMapRangeInputs();
   updateZoomReadout();
   updateGridMetrics();
   setViewCenter(keepCenter);
@@ -319,110 +357,22 @@ function applyLayout(imported, options){
   updateMapToolColors();
   render();
 }
-// 都市・同盟建築物は名前必須。それ以外は空欄なら種類名（旗・配置不能は表示なし）に戻る。
-function isNameRequired(type){
-  return type === "city" || type === "allianceBuilding";
-}
-function getPlacementLabel(placement){
-  if (placement.name) return placement.name;
-  return placement.type === "flag" || placement.type === "unavailable" ? "" : TYPE_LABELS[placement.type];
-}
+
+// ---- 描画 ----
 var svgns = "http://www.w3.org/2000/svg";
 var svg = document.getElementById("mapSvg");
 var mapWrap = document.querySelector(".map-wrap");
 var gridLayer = null;
-window.addEventListener("resize", function(){
-  var center = getViewCenter();
-  updateGridMetrics();
-  setViewCenter(center);
-  render();
-});
-function clientToSvg(clientX, clientY){
-  var bounds = svg.getBoundingClientRect();
-  return {
-    x: (clientX - bounds.left) * VIEW_W / bounds.width,
-    y: (clientY - bounds.top) * VIEW_H / bounds.height
-  };
-}
-function getCoordFromKey(cellKey){
-  var parts = cellKey.split("_");
-  var cellCol = parseInt(parts[0], 10);
-  var cellRow = parseInt(parts[1], 10);
-  return {
-    x: COORD_ORIGIN_POINT.x - (cellRow - COORD_ORIGIN_CELL.row),
-    y: COORD_ORIGIN_POINT.y - (cellCol - COORD_ORIGIN_CELL.col)
-  };
-}
-function cellKeyAtClientPoint(clientX, clientY){
-  var point = clientToSvg(clientX, clientY);
-  var worldX = (point.x - panX) / zoom;
-  var worldY = (point.y - panY) / zoom;
-  var dx = (worldX - CX) / HW;
-  var dy = (worldY - CY) / HH;
-  return Math.round((dx + dy) / 2) + "_" + Math.round((dy - dx) / 2);
-}
-function clearSvg(){
-  while(svg.firstChild) svg.removeChild(svg.firstChild);
-}
-
 function el(tag, attrs){
   var e = document.createElementNS(svgns, tag);
   for (var k in attrs){ e.setAttribute(k, attrs[k]); }
   return e;
 }
-
-function insetPolygon(points, paddingPx){
-  var vertices = points.split(" ").map(function(point){
-    var pair = point.split(",");
-    return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
-  });
-  var center = vertices.reduce(function(total, point){
-    total.x += point.x / vertices.length;
-    total.y += point.y / vertices.length;
-    return total;
-  }, { x: 0, y: 0 });
-  var minDimension = Math.min(window.innerWidth, mapHeight);
-  var inset = paddingPx * 900 / (minDimension * zoom);
-  var apothem = HW / Math.SQRT2;
-  var scale = Math.max(0, 1 - inset / apothem);
-  return vertices.map(function(point){
-    return (center.x + (point.x - center.x) * scale).toFixed(1) + "," +
-      (center.y + (point.y - center.y) * scale).toFixed(1);
-  }).join(" ");
+function labelStyle(fontSize){
+  return "paint-order:stroke;stroke:#ffffff;stroke-width:" + (fontSize * 0.22) + "px;stroke-linejoin:round;";
 }
-function cellInsetPolygon(points, insetScale){
-  var vertices = points.split(" ").map(function(point){
-    var pair = point.split(",");
-    return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
-  });
-  var center = vertices.reduce(function(total, point){
-    total.x += point.x / vertices.length;
-    total.y += point.y / vertices.length;
-    return total;
-  }, { x: 0, y: 0 });
-  var inset = Math.max(0, 1 - insetScale);
-  return vertices.map(function(point){
-    return (center.x + (point.x - center.x) * (1 - inset)).toFixed(1) + "," +
-      (center.y + (point.y - center.y) * (1 - inset)).toFixed(1);
-  }).join(" ");
-}
-
-function placementPolygon(placement){
-  var anchor = placement.anchor.split("_");
-  var size = PLACEMENT_SIZES[placement.type];
-  var offset = 1 - size;
-  var col = parseInt(anchor[0], 10) + offset - 0.5;
-  var row = parseInt(anchor[1], 10) + offset - 0.5;
-  return [
-    toScreen(col, row),
-    toScreen(col + size, row),
-    toScreen(col + size, row + size),
-    toScreen(col, row + size)
-  ].map(function(point){ return point.x.toFixed(1) + "," + point.y.toFixed(1); }).join(" ");
-}
-
 function render(){
-  clearSvg();
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
   svg.setAttribute("viewBox", "0 0 " + VIEW_W + " " + VIEW_H);
 
   gridLayer = el("g", {transform: "translate(" + panX + " " + panY + ") scale(" + zoom + ")"});
@@ -433,10 +383,8 @@ function render(){
   for (var col = colStart; col <= colEnd; col++){
     for (var row = rowStart; row <= rowEnd; row++){
       var key = col + "_" + row;
-      var category = classifications[key];
-      var points = cellPolygon(col, row);
       var polygon = el("polygon", {
-        points: points,
+        points: cellPolygon(col, row),
         fill: "#ffffff",
         stroke: "none",
         class: "map-cell",
@@ -454,7 +402,6 @@ function render(){
   var selectedPlacement = getSelectedPlacement();
   if (!selectedPlacement) selectedKey = null;
   placements.forEach(function(placement, layerIndex){
-    var size = PLACEMENT_SIZES[placement.type];
     var footprint = placementPolygon(placement);
     var isSelected = placement === selectedPlacement;
     var objectLayer = el("g", {
@@ -472,14 +419,13 @@ function render(){
       class: "object-padding"
     }));
     var innerPaddingRatio = 0.18;
-    var shape = el("polygon", {
+    objectLayer.appendChild(el("polygon", {
       points: cellInsetPolygon(footprint, 1 - innerPaddingRatio),
       fill: TYPE_COLORS[placement.type],
       stroke: "none",
       "pointer-events": "all",
       class: placement.type === "city" ? "city-fill" : "object-shape"
-    });
-    objectLayer.appendChild(shape);
+    }));
     if (isSelected){
       objectLayer.appendChild(el("polygon", {
         points: footprint,
@@ -510,22 +456,14 @@ function render(){
     });
     var label = getPlacementLabel(placement);
     if (label){
-      var vertices = footprint.split(" ").map(function(point){
-        var pair = point.split(",");
-        return { x: parseFloat(pair[0]), y: parseFloat(pair[1]) };
-      });
-      var center = vertices.reduce(function(total, point){
-        total.x += point.x / vertices.length;
-        total.y += point.y / vertices.length;
-        return total;
-      }, { x: 0, y: 0 });
+      var vertices = parsePoints(footprint);
+      var center = polygonCenter(vertices);
       // 熊罠は設定の固定サイズで描き、自動縮小しない。改行は熊罠の名前でのみ入力できる。
       var isBearTrap = placement.type === "bearTrap";
-      var baseFontSize = isBearTrap ? bearTrapLabelSize : Math.max(6, Math.min(12, labelScale));
+      var baseFontSize = isBearTrap ? bearTrapLabelSize : labelScale;
       var lines = label.split("\n");
       var minX = Math.min.apply(null, vertices.map(function(point){ return point.x; }));
       var maxX = Math.max.apply(null, vertices.map(function(point){ return point.x; }));
-      var allowedWidth = (maxX - minX) * (1 - innerPaddingRatio);
       var labelAttrs = {
         x: center.x,
         y: center.y + baseFontSize * 0.35,
@@ -536,9 +474,9 @@ function render(){
         "pointer-events": "none",
         "data-center-y": center.y,
         class: "object-label" + (isSelected ? " selected" : ""),
-        style: "paint-order:stroke;stroke:#ffffff;stroke-width:" + (baseFontSize * 0.22) + "px;stroke-linejoin:round;"
+        style: labelStyle(baseFontSize)
       };
-      if (!isBearTrap && lines.length === 1) labelAttrs["data-fit-width"] = allowedWidth;
+      if (!isBearTrap && lines.length === 1) labelAttrs["data-fit-width"] = (maxX - minX) * (1 - innerPaddingRatio);
       var labelText = el("text", labelAttrs);
       if (lines.length === 1){
         labelText.textContent = label;
@@ -582,6 +520,7 @@ function render(){
   }));
   svg.appendChild(gridLayer);
   updateSelectionBar(selectedPlacement);
+  // 1行の名前がオブジェクトの幅に収まらないときは、収まるまで文字を小さくする（描画後に幅を測る）。
   Array.from(gridLayer.querySelectorAll(".object-label")).forEach(function(labelText){
     var requestedSize = parseFloat(labelText.getAttribute("font-size"));
     var allowedWidth = parseFloat(labelText.getAttribute("data-fit-width"));
@@ -591,11 +530,30 @@ function render(){
       var fittedSize = requestedSize * allowedWidth / renderedWidth;
       labelText.setAttribute("font-size", fittedSize);
       labelText.setAttribute("y", parseFloat(labelText.getAttribute("data-center-y")) + fittedSize * 0.35);
-      labelText.setAttribute("style", "paint-order:stroke;stroke:#ffffff;stroke-width:" + (fittedSize * 0.22) + "px;stroke-linejoin:round;");
+      labelText.setAttribute("style", labelStyle(fittedSize));
     }
   });
 }
 
+// ---- 出力（JSON・PNG・SVG） ----
+function formatFileTimestamp(date){
+  function pad(value){ return String(value).padStart(2, "0"); }
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+    "_" + pad(date.getHours()) + "-" + pad(date.getMinutes());
+}
+function exportFileName(date, extension){
+  return "alliance-map-" + formatFileTimestamp(date) + "." + extension;
+}
+function downloadFile(blob, fileName){
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
 // 表示中のズーム・位置に関係なく、MAP範囲全体を1枚のSVGとして書き出す。
 // pixelSize を渡すと、PNG化用に長辺がそのピクセル数になる width/height を付ける。
 function buildExportSvg(pixelSize){
@@ -629,4 +587,29 @@ function buildExportSvg(pixelSize){
   Array.from(content.querySelectorAll(".map-center-point, .selection-outline")).forEach(function(node){ node.remove(); });
   exportSvg.appendChild(content);
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(exportSvg);
+}
+// iPhone の写真アプリや Discord は SVG を表示できないため、PNG でも出力する。
+var PNG_EXPORT_SIZE = 2400;
+function renderPngBlob(callback){
+  var svgUrl = URL.createObjectURL(new Blob([buildExportSvg(PNG_EXPORT_SIZE)], { type: "image/svg+xml" }));
+  var image = new Image();
+  image.onload = function(){
+    var canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth || PNG_EXPORT_SIZE;
+    canvas.height = image.naturalHeight || PNG_EXPORT_SIZE;
+    var context = canvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(svgUrl);
+    canvas.toBlob(function(blob){
+      if (blob) callback(blob);
+      else showMessage("画像を作成できません");
+    }, "image/png");
+  };
+  image.onerror = function(){
+    URL.revokeObjectURL(svgUrl);
+    showMessage("画像を作成できません");
+  };
+  image.src = svgUrl;
 }
