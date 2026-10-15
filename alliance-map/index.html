@@ -205,6 +205,55 @@
   body[data-role="viewer"] [data-role-ui="file"],
   body[data-role="editor"] [data-role-ui="file"],
   body.read-only [data-role-ui="file"]{display:none !important;}
+  /* Web同期（cloud.js） */
+  .cloud-controls[hidden]{display:none;}
+  .cloud-controls{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+  .cloud-controls button{padding:7px 10px;white-space:nowrap;}
+  .cloud-controls button[hidden]{display:none;}
+  .cloud-status{color:var(--text-sub);font-size:11px;white-space:nowrap;}
+  .cloud-status.error{color:#dc3545;font-weight:600;}
+  .cloud-status button{margin-left:4px;padding:2px 8px;font-size:11px;}
+  .cloud-banner[hidden]{display:none;}
+  .cloud-banner{
+    position:fixed;
+    top:72px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:5;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    max-width:calc(100vw - 32px);
+    padding:6px 8px 6px 14px;
+    border:1px solid #ffe69c;
+    border-radius:18px;
+    background:#fff3cd;
+    color:#664d03;
+    font-size:13px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  }
+  .cloud-banner.preview{border-color:#9ec5fe;background:#cfe2ff;color:#084298;}
+  .cloud-banner.offline{border-color:#d3d3d4;background:#e2e3e5;color:#41464b;}
+  .cloud-banner-actions{display:flex;gap:6px;}
+  .cloud-banner button{padding:4px 10px;border-color:currentColor;background:#ffffff;color:inherit;}
+  .cloud-banner button:hover{background:rgba(255,255,255,0.6);}
+  .cloud-toast[hidden]{display:none;}
+  .cloud-toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%);
+    z-index:30;
+    max-width:calc(100vw - 32px);
+    padding:10px 16px;
+    border-radius:8px;
+    background:rgba(17,17,17,0.88);
+    color:#ffffff;
+    font-size:13px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+  }
 </style>
 </head>
 <body>
@@ -241,7 +290,15 @@
     <button id="openObjectColorSettings" type="button" data-role-ui="edit">設定</button>
     <button id="resetMapAction" type="button" data-role-ui="edit">リセット</button>
   </div>
+  <div class="cloud-controls" id="cloudControls" hidden>
+    <span id="cloudStatus" class="cloud-status" role="status" aria-live="polite"></span>
+  </div>
 </div>
+<div class="cloud-banner" id="cloudBanner" role="status" aria-live="polite" hidden>
+  <span id="cloudBannerText"></span>
+  <span id="cloudBannerActions" class="cloud-banner-actions"></span>
+</div>
+<div class="cloud-toast" id="cloudToast" role="alert" hidden></div>
 
 <div class="map-wrap">
   <svg id="mapSvg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1562,5 +1619,6 @@
   }, 1500);
 })();
 </script>
+<script type="module" src="./cloud.js"></script>
 </body>
 </html>
