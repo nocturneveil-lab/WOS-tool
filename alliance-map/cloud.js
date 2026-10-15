@@ -1,249 +1,15 @@
-// Alliance Map の Web 保存・リアルタイム同期（Firebase / Cloud Firestore）。
-// index.html の IIFE が公開する window.AllianceMapApp を通してマップを操作する。
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDq9vYAx3tiqBhNeJL0tWv0I4xyDvDeJ1Y",
-  authDomain: "alliance-map-fbbf6.firebaseapp.com",
-  projectId: "alliance-map-fbbf6",
-  storageBucket: "alliance-map-fbbf6.firebasestorage.app",
-  messagingSenderId: "378934098264",
-  appId: "1:378934098264:web:e884dcd6475bf709b18d2d"
-};
-// 編集(保存不可)用の共有アカウント。合言葉=このアカウントのパスワード
-const EDITOR_EMAIL = "editor@alliance-map.app";
-// 保存可能アカウントのメールは「アカウント名 + このドメイン」で内部生成する
-const SAVER_EMAIL_DOMAIN = "saver.alliance-map.app";
+// Alliance Map の Web 保存・リアルタイム同期（Firebase / Cloud Firestore）の起動。
+// map-app.js が公開する window.AllianceMapApp を通してマップを操作する。
+import { state, el, mapApp, sdk, auth, mapRef, loadSdk, connectFirestore, connectAuth, setCloudStatus, showBanner, hideBanner, showToast, formatTime, formatDateTime, pickLayout, layoutContentKey, isSameAsLocal, applyRemoteLayout, buildSaveLayout, rememberSavedKey, mapDocument, setSettingsMessage, historyRef, iconElement, labelElements } from "./cloud-shared.js";
 
-const ACCOUNT_NAME_PATTERN = /^[a-z0-9_-]{1,20}$/;
-const ACCOUNT_NAME_KEY = "alliance_map_account_name_v1";
-const LOGIN_FAILED_MESSAGE = "アカウント名または合言葉が違います";
-
-const SDK_BASE = "https://www.gstatic.com/firebasejs/13.0.0/";
-// 最初のスナップショットがこの時間内に届かなければ default-layout.json を表示する。
-const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
+// ---- Web のマップの受信と適用、保存可の自動保存、ヘッダーの保存状態と帯の表示。
 // 最後の変更からこの時間が経ったら、まとめてWebに保存する。
 const SAVE_DEBOUNCE_MS = 1000;
 // このクライアントで最後に変更してからこの時間が経っていたら、保存の前に「編集開始前」の履歴を残す。
 const BEFORE_EDIT_INTERVAL_MS = 10 * 60 * 1000;
-// 自動の履歴（名前付き保存以外）は最新のこの件数だけ残す。
-const AUTO_HISTORY_LIMIT = 30;
-const NAMED_HISTORY_LIMIT = 20;
-const HISTORY_NAME_MAX_LENGTH = 30;
-// named 以外はすべて自動の履歴として扱う（件数の上限も共通）。
-const HISTORY_KIND_LABELS = {
-  "before-edit": "編集開始前",
-  "before-restore": "復元前",
-  "before-reset": "リセット前",
-  "before-import": "読み込み前",
-  named: "名前付き保存"
-};
+
 // マップを丸ごと置き換える操作と、その直前に必ず残す履歴の種類。
 const REPLACE_HISTORY_KINDS = { reset: "before-reset", file: "before-import" };
-
-const mapApp = window.AllianceMapApp;
-
-const state = {
-  // 初回表示（Web または default-layout.json）を済ませたか
-  initialShown: false,
-  // default-layout.json を表示している（オフライン表示）
-  showingFallback: false,
-  // maps/main が存在しないことを確認した
-  docMissing: false,
-  // 最後に受信した maps/main（レイアウトとメタ情報）
-  remote: null,
-  // default-layout.json の内容（Web未登録・オフライン時の「最新」）
-  fallbackLayout: null,
-  online: navigator.onLine,
-  // "viewer" | "editor" | "saver"
-  role: "viewer",
-  // saver のアカウント名
-  account: "",
-  // Webに保存されないローカルの変更がある（editor、またはオフライン表示中の saver）
-  localDirty: false,
-  // ローカル変更中にWebが更新された
-  remoteChangedWhileDirty: false,
-  // ---- saver の自動保存 ----
-  // 保存待ちの変更がある
-  dirty: false,
-  saving: false,
-  saveError: false,
-  lastSavedAt: null,
-  // ローカルの内容のもとになった maps/main の rev（衝突の検知に使う）
-  baseRev: 0,
-  // 自分が保存した内容のキー（自分の書き込みの反映を見分けるため。古い順）
-  recentSavedKeys: [],
-  // ---- 履歴 ----
-  // このクライアントで最後に変更した時刻
-  lastLocalChangeAt: 0,
-  // 次のマップ保存の前に書き込む履歴（古い順）。[{kind, layout}]
-  pendingHistories: [],
-  // プレビュー中の履歴と、プレビュー前のローカルの状態
-  previewing: null,
-  prePreviewLayout: null,
-  historyEntries: []
-};
-
-let sdk = null;
-let auth = null;
-let db = null;
-let mapRef = null;
-let historyRef = null;
-
-const el = {
-  controls: document.getElementById("cloudControls"),
-  status: document.getElementById("cloudStatus"),
-  accountButton: document.getElementById("accountButton"),
-  loginDialog: document.getElementById("loginDialog"),
-  loginForm: document.getElementById("loginForm"),
-  loginTabs: Array.from(document.querySelectorAll("[data-login-mode]")),
-  loginModeNote: document.getElementById("loginModeNote"),
-  loginAccountField: document.getElementById("loginAccountField"),
-  loginAccountInput: document.getElementById("loginAccountInput"),
-  loginPasswordInput: document.getElementById("loginPasswordInput"),
-  loginError: document.getElementById("loginError"),
-  loginSubmit: document.getElementById("loginSubmit"),
-  newPasswordInput: document.getElementById("newPasswordInput"),
-  newPasswordConfirmInput: document.getElementById("newPasswordConfirmInput"),
-  changePasswordButton: document.getElementById("changePasswordButton"),
-  settingsCloudMessage: document.getElementById("settingsCloudMessage"),
-  historyButton: document.getElementById("historyButton"),
-  historyDialog: document.getElementById("historyDialog"),
-  historyList: document.getElementById("historyList"),
-  historyMessage: document.getElementById("historyMessage"),
-  historyNameInput: document.getElementById("historyNameInput"),
-  saveNamedButton: document.getElementById("saveNamedButton"),
-  banner: document.getElementById("cloudBanner"),
-  bannerText: document.getElementById("cloudBannerText"),
-  bannerActions: document.getElementById("cloudBannerActions"),
-  toast: document.getElementById("cloudToast")
-};
-
-// ---- 表示まわり ----
-// ヘッダー用の線画アイコン（固定の文字列なので innerHTML で入れてよい）。
-const ICONS = {
-  saved: '<path d="M5 12l5 5L20 7"/>',
-  saving: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
-  error: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
-  offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A5 5 0 0 0 6 18h11"/><path d="M11 6.1A6 6 0 0 1 18 11a4 4 0 0 1 3 5.4"/>',
-  sync: '<path d="M7 18a5 5 0 0 1-.4-10A7 7 0 0 1 20 10a4 4 0 0 1-1 8z"/>',
-  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
-  login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>'
-};
-function iconElement(name) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "icon");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = ICONS[name];
-  return svg;
-}
-// 広い画面では long、狭い画面では short を表示する（CSS の .label-long / .label-short）。
-function labelElements(long, short) {
-  const longLabel = document.createElement("span");
-  longLabel.className = "label-long";
-  longLabel.textContent = long;
-  const shortLabel = document.createElement("span");
-  shortLabel.className = "label-short";
-  shortLabel.textContent = short || long;
-  return [longLabel, shortLabel];
-}
-// options: { short, icon, error, action:{label, onClick} }
-// action があるときは、表示全体を押せるボタンにする（狭い画面でも押しやすく、幅も増えない）。
-function setCloudStatus(text, options) {
-  const opts = options || {};
-  const parts = [iconElement(opts.icon || "sync"), ...labelElements(text, opts.short)];
-  el.status.classList.toggle("error", !!opts.error);
-  el.status.title = text;
-  if (opts.action) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.title = opts.action.label;
-    button.append(...parts);
-    button.addEventListener("click", opts.action.onClick);
-    el.status.replaceChildren(button);
-  } else {
-    el.status.replaceChildren(...parts);
-  }
-}
-// actions: [{label, onClick}]
-function showBanner(text, actions, variant) {
-  el.bannerText.textContent = text;
-  el.bannerActions.replaceChildren(...(actions || []).map((action) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = action.label;
-    button.addEventListener("click", action.onClick);
-    return button;
-  }));
-  el.banner.className = "cloud-banner" + (variant ? " " + variant : "");
-  el.banner.hidden = false;
-}
-function hideBanner() {
-  el.banner.hidden = true;
-}
-let toastTimer = 0;
-function showToast(text) {
-  el.toast.textContent = text;
-  el.toast.hidden = false;
-  window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => { el.toast.hidden = true; }, 5000);
-}
-function formatTime(date) {
-  return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
-}
-function formatDateTime(date) {
-  if (!date) return "日時不明";
-  return (date.getMonth() + 1) + "/" + date.getDate() + " " + formatTime(date);
-}
-
-// ---- レイアウト ----
-// Firestore のドキュメントから、レイアウト形式（「ファイルに保存」と同じ形）だけを取り出す。
-function pickLayout(data) {
-  return {
-    format: data.format,
-    version: data.version,
-    classifications: data.classifications,
-    placements: data.placements,
-    objectColors: data.objectColors,
-    bearTrapLabelSize: data.bearTrapLabelSize,
-    view: data.view
-  };
-}
-// キーの順序に左右されない JSON 文字列（Firestore はマップのキー順を保たないため）。
-function stableStringify(value) {
-  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
-  if (value && typeof value === "object") {
-    return "{" + Object.keys(value).sort().map((key) => JSON.stringify(key) + ":" + stableStringify(value[key])).join(",") + "}";
-  }
-  return JSON.stringify(value === undefined ? null : value);
-}
-// 表示位置（view.center / zoom）を除いた中身の比較用キー。
-// 受信したデータは applyLayout で検証する前にここを通るので、形が壊れていても例外を出さない。
-function layoutContentKey(layout) {
-  const view = layout.view && typeof layout.view === "object" ? layout.view : {};
-  const placements = Array.isArray(layout.placements) ? layout.placements : [];
-  return stableStringify({
-    classifications: layout.classifications || {},
-    placements: placements.map((item) => item && typeof item === "object" ? [item.type, item.anchor, item.name || ""] : null),
-    objectColors: layout.objectColors || {},
-    bearTrapLabelSize: layout.bearTrapLabelSize,
-    mapCols: view.mapCols,
-    mapRows: view.mapRows
-  });
-}
-function isSameAsLocal(layout) {
-  return layoutContentKey(layout) === layoutContentKey(mapApp.getLayout());
-}
-function applyRemoteLayout(layout, initial) {
-  try {
-    mapApp.applyLayout(layout, { source: initial ? "cloud-initial" : "cloud" });
-    return true;
-  } catch (error) {
-    console.error("cloud layout apply failed", error);
-    showToast("Webのマップを読み込めません: " + error.message);
-    return false;
-  }
-}
 
 // Webの最新（未登録・オフライン時は default-layout.json）に戻す。表示位置は変えない。
 function revertToLatest() {
@@ -254,23 +20,6 @@ function revertToLatest() {
   state.localDirty = false;
   state.remoteChangedWhileDirty = false;
   refreshUi();
-}
-// 保存用のレイアウト。表示位置（view.center / zoom）は自分の画面ではなく、Webの初期表示を保つ。
-function buildSaveLayout(baseLayout) {
-  const layout = baseLayout ? JSON.parse(JSON.stringify(baseLayout)) : mapApp.getLayout();
-  const source = state.remote && !state.showingFallback ? state.remote.layout : state.fallbackLayout;
-  const sharedView = source && source.view && typeof source.view === "object" ? source.view : {};
-  layout.view = {
-    center: sharedView.center || { x: 0, y: 0 },
-    zoom: Number.isFinite(sharedView.zoom) ? sharedView.zoom : layout.view.zoom,
-    mapCols: layout.view.mapCols,
-    mapRows: layout.view.mapRows
-  };
-  return layout;
-}
-function rememberSavedKey(layout) {
-  state.recentSavedKeys.push(layoutContentKey(layout));
-  if (state.recentSavedKeys.length > 10) state.recentSavedKeys.shift();
 }
 
 // ---- 表示状態の更新 ----
@@ -322,24 +71,7 @@ function refreshStatus() {
   else if (state.remote) setCloudStatus("Web同期中", { short: "同期中", icon: "sync" });
   else setCloudStatus("接続中…", { short: "接続中", icon: "saving" });
 }
-// ログイン状態の表示とログイン・ログアウトを1つのボタンにまとめる。
-function refreshRole() {
-  const button = el.accountButton;
-  button.setAttribute("data-role", state.role);
-  if (state.role === "viewer") {
-    button.replaceChildren(iconElement("login"), ...labelElements("ログイン", "ログイン"));
-    button.title = "ログイン（現在は閲覧のみ）";
-  } else {
-    const long = state.role === "saver" ? "保存可：" + state.account : "編集（保存不可）";
-    const short = state.role === "saver" ? state.account : "編集";
-    const action = document.createElement("span");
-    action.className = "label-long account-action";
-    action.textContent = "ログアウト";
-    button.replaceChildren(iconElement(state.role === "saver" ? "user" : "edit"), ...labelElements(long, short), action);
-    button.title = long + "（押すとログアウト）";
-  }
-  el.historyButton.hidden = state.role === "viewer";
-}
+
 function refreshUi() {
   refreshRole();
   refreshBanner();
@@ -420,13 +152,7 @@ function cancelScheduledSave() {
   state.saveError = false;
   state.pendingHistories = [];
 }
-function mapDocument(layout) {
-  return {
-    ...layout,
-    updatedAt: sdk.serverTimestamp(),
-    updatedBy: state.account
-  };
-}
+
 async function saveNow() {
   window.clearTimeout(saveTimer);
   if (state.saving || state.role !== "saver" || !state.remote || state.showingFallback || state.previewing) return;
@@ -466,6 +192,135 @@ async function saveNow() {
   refreshUi();
   if (!state.dirty && !state.saveError) processRemote();
 }
+
+// Webにマップがないとき、表示中の配置を maps/main として登録する。
+async function registerMap() {
+  if (state.role !== "saver" || !state.docMissing) return;
+  if (!window.confirm("表示中の配置をWebに登録します。よろしいですか？")) return;
+  const layout = buildSaveLayout();
+  try {
+    await sdk.setDoc(mapRef, { ...mapDocument(layout), rev: 1 });
+    state.localDirty = false;
+    state.remoteChangedWhileDirty = false;
+    showToast("Webに登録しました");
+  } catch (error) {
+    console.error("map register failed", error);
+    showToast("Webに登録できません");
+  }
+  refreshUi();
+}
+// 現在の表示位置とズームを、全員の初期表示として保存する。
+async function saveInitialView() {
+  if (state.role !== "saver" || !state.remote || state.showingFallback) return;
+  const view = mapApp.getLayout().view;
+  try {
+    await sdk.updateDoc(mapRef, {
+      "view.center": view.center,
+      "view.zoom": view.zoom,
+      updatedAt: sdk.serverTimestamp(),
+      updatedBy: state.account,
+      rev: sdk.increment(1)
+    });
+    mapApp.setZoomBase(view.zoom);
+    setSettingsMessage("現在の表示を初期表示にしました");
+  } catch (error) {
+    console.error("initial view save failed", error);
+    setSettingsMessage("初期表示を保存できません", true);
+  }
+}
+
+// 離脱警告の判定。editor はローカルの変更、saver は保存待ち（と保存されない変更）があるとき。
+function hasUnsavedWork() {
+  if (state.role === "viewer") return false;
+  return state.localDirty || state.dirty || state.saving || state.saveError;
+}
+
+function handleSnapshot(snapshot) {
+  if (snapshot.metadata.hasPendingWrites) return;
+  if (!snapshot.exists()) {
+    // キャッシュからの「存在しない」はオフラインによるもの。サーバーで確認できたときだけ未登録とみなす。
+    if (!snapshot.metadata.fromCache) state.docMissing = true;
+    showFallback();
+    return;
+  }
+  const data = snapshot.data();
+  const layout = pickLayout(data);
+  const key = layoutContentKey(layout);
+  const rev = Number.isFinite(data.rev) ? data.rev : 0;
+  // 自分の保存の反映かどうか。届いた分より前の自分の保存は、もう反映済みなので忘れる。
+  const savedIndex = state.recentSavedKeys.lastIndexOf(key);
+  let own = false;
+  if (savedIndex !== -1) {
+    state.recentSavedKeys.splice(0, savedIndex + 1);
+    state.baseRev = Math.max(state.baseRev, rev);
+    own = true;
+  } else if (state.remote && state.remote.own && state.remote.key === key) {
+    own = true;
+  }
+  state.docMissing = false;
+  state.remote = {
+    layout,
+    key,
+    rev,
+    own,
+    updatedBy: data.updatedBy || "",
+    updatedAt: data.updatedAt && typeof data.updatedAt.toDate === "function" ? data.updatedAt.toDate() : null
+  };
+  if (!state.initialShown) {
+    // 初回は表示位置（view）も適用する。
+    if (applyRemoteLayout(state.remote.layout, true)) {
+      state.initialShown = true;
+      state.baseRev = rev;
+      mapApp.setStatus("");
+    }
+  } else if (state.showingFallback) {
+    // オフライン表示中にWebへつながった。ローカルで変更していなければ初回と同じ扱いで表示する。
+    state.showingFallback = false;
+    if (state.localDirty && !isSameAsLocal(layout)) state.remoteChangedWhileDirty = true;
+    else if (applyRemoteLayout(state.remote.layout, true)) {
+      state.localDirty = false;
+      state.baseRev = rev;
+    }
+  } else {
+    processRemote();
+  }
+  refreshUi();
+}
+let fallbackLoading = null;
+function showFallback() {
+  if (state.initialShown && !state.showingFallback) {
+    refreshUi();
+    return;
+  }
+  if (!fallbackLoading) {
+    fallbackLoading = mapApp.loadDefaultLayout().then((layout) => {
+      state.fallbackLayout = layout;
+      state.initialShown = true;
+      state.showingFallback = true;
+      mapApp.setStatus("");
+    }).catch((error) => {
+      console.error("published layout load failed", error);
+      mapApp.setStatus("公開用の配置を読み込めません: " + error.message);
+    }).finally(refreshUi);
+  }
+  refreshUi();
+}
+
+
+// ---- 履歴：一覧・プレビュー・復元・名前付き保存。
+// 自動の履歴（名前付き保存以外）は最新のこの件数だけ残す。
+const AUTO_HISTORY_LIMIT = 30;
+const NAMED_HISTORY_LIMIT = 20;
+const HISTORY_NAME_MAX_LENGTH = 30;
+// named 以外はすべて自動の履歴として扱う（件数の上限も共通）。
+const HISTORY_KIND_LABELS = {
+  "before-edit": "編集開始前",
+  "before-restore": "復元前",
+  "before-reset": "リセット前",
+  "before-import": "読み込み前",
+  named: "名前付き保存"
+};
+
 // ---- 履歴 ----
 function historyTitle(entry) {
   return entry.kind === "named" ? "★ " + entry.name : HISTORY_KIND_LABELS[entry.kind] || entry.kind;
@@ -699,40 +554,34 @@ function setupHistoryUi() {
   el.saveNamedButton.addEventListener("click", saveNamedHistory);
 }
 
-// Webにマップがないとき、表示中の配置を maps/main として登録する。
-async function registerMap() {
-  if (state.role !== "saver" || !state.docMissing) return;
-  if (!window.confirm("表示中の配置をWebに登録します。よろしいですか？")) return;
-  const layout = buildSaveLayout();
-  try {
-    await sdk.setDoc(mapRef, { ...mapDocument(layout), rev: 1 });
-    state.localDirty = false;
-    state.remoteChangedWhileDirty = false;
-    showToast("Webに登録しました");
-  } catch (error) {
-    console.error("map register failed", error);
-    showToast("Webに登録できません");
+
+// ---- ログイン・ログアウト・権限の判定・合言葉の変更。
+// 編集(保存不可)用の共有アカウント。合言葉=このアカウントのパスワード
+const EDITOR_EMAIL = "editor@alliance-map.app";
+// 保存可能アカウントのメールは「アカウント名 + このドメイン」で内部生成する
+const SAVER_EMAIL_DOMAIN = "saver.alliance-map.app";
+
+const ACCOUNT_NAME_PATTERN = /^[a-z0-9_-]{1,20}$/;
+const ACCOUNT_NAME_KEY = "alliance_map_account_name_v1";
+const LOGIN_FAILED_MESSAGE = "アカウント名または合言葉が違います";
+
+// ログイン状態の表示とログイン・ログアウトを1つのボタンにまとめる。
+function refreshRole() {
+  const button = el.accountButton;
+  button.setAttribute("data-role", state.role);
+  if (state.role === "viewer") {
+    button.replaceChildren(iconElement("login"), ...labelElements("ログイン", "ログイン"));
+    button.title = "ログイン（現在は閲覧のみ）";
+  } else {
+    const long = state.role === "saver" ? "保存可：" + state.account : "編集（保存不可）";
+    const short = state.role === "saver" ? state.account : "編集";
+    const action = document.createElement("span");
+    action.className = "label-long account-action";
+    action.textContent = "ログアウト";
+    button.replaceChildren(iconElement(state.role === "saver" ? "user" : "edit"), ...labelElements(long, short), action);
+    button.title = long + "（押すとログアウト）";
   }
-  refreshUi();
-}
-// 現在の表示位置とズームを、全員の初期表示として保存する。
-async function saveInitialView() {
-  if (state.role !== "saver" || !state.remote || state.showingFallback) return;
-  const view = mapApp.getLayout().view;
-  try {
-    await sdk.updateDoc(mapRef, {
-      "view.center": view.center,
-      "view.zoom": view.zoom,
-      updatedAt: sdk.serverTimestamp(),
-      updatedBy: state.account,
-      rev: sdk.increment(1)
-    });
-    mapApp.setZoomBase(view.zoom);
-    setSettingsMessage("現在の表示を初期表示にしました");
-  } catch (error) {
-    console.error("initial view save failed", error);
-    setSettingsMessage("初期表示を保存できません", true);
-  }
+  el.historyButton.hidden = state.role === "viewer";
 }
 
 // ---- 権限 ----
@@ -773,11 +622,6 @@ function handleAuthChanged(user) {
   mapApp.setRole(next.role);
   refreshUi();
   processRemote();
-}
-// 離脱警告の判定。editor はローカルの変更、saver は保存待ち（と保存されない変更）があるとき。
-function hasUnsavedWork() {
-  if (state.role === "viewer") return false;
-  return state.localDirty || state.dirty || state.saving || state.saveError;
 }
 
 // ---- ログイン ----
@@ -870,14 +714,9 @@ function setupLoginUi() {
     if (event.key === "Escape" && !el.loginDialog.hidden) closeLoginDialog();
   });
   el.changePasswordButton.addEventListener("click", changePassword);
-  document.getElementById("saveInitialViewButton").addEventListener("click", saveInitialView);
+
 }
 
-// ---- 合言葉の変更（saver） ----
-function setSettingsMessage(text, isError) {
-  el.settingsCloudMessage.textContent = text;
-  el.settingsCloudMessage.classList.toggle("error", !!isError);
-}
 async function changePassword() {
   const password = el.newPasswordInput.value;
   if (password.length < 6) {
@@ -912,89 +751,17 @@ async function changePassword() {
     el.changePasswordButton.disabled = false;
   }
 }
-function handleSnapshot(snapshot) {
-  if (snapshot.metadata.hasPendingWrites) return;
-  if (!snapshot.exists()) {
-    // キャッシュからの「存在しない」はオフラインによるもの。サーバーで確認できたときだけ未登録とみなす。
-    if (!snapshot.metadata.fromCache) state.docMissing = true;
-    showFallback();
-    return;
-  }
-  const data = snapshot.data();
-  const layout = pickLayout(data);
-  const key = layoutContentKey(layout);
-  const rev = Number.isFinite(data.rev) ? data.rev : 0;
-  // 自分の保存の反映かどうか。届いた分より前の自分の保存は、もう反映済みなので忘れる。
-  const savedIndex = state.recentSavedKeys.lastIndexOf(key);
-  let own = false;
-  if (savedIndex !== -1) {
-    state.recentSavedKeys.splice(0, savedIndex + 1);
-    state.baseRev = Math.max(state.baseRev, rev);
-    own = true;
-  } else if (state.remote && state.remote.own && state.remote.key === key) {
-    own = true;
-  }
-  state.docMissing = false;
-  state.remote = {
-    layout,
-    key,
-    rev,
-    own,
-    updatedBy: data.updatedBy || "",
-    updatedAt: data.updatedAt && typeof data.updatedAt.toDate === "function" ? data.updatedAt.toDate() : null
-  };
-  if (!state.initialShown) {
-    // 初回は表示位置（view）も適用する。
-    if (applyRemoteLayout(state.remote.layout, true)) {
-      state.initialShown = true;
-      state.baseRev = rev;
-      mapApp.setStatus("");
-    }
-  } else if (state.showingFallback) {
-    // オフライン表示中にWebへつながった。ローカルで変更していなければ初回と同じ扱いで表示する。
-    state.showingFallback = false;
-    if (state.localDirty && !isSameAsLocal(layout)) state.remoteChangedWhileDirty = true;
-    else if (applyRemoteLayout(state.remote.layout, true)) {
-      state.localDirty = false;
-      state.baseRev = rev;
-    }
-  } else {
-    processRemote();
-  }
-  refreshUi();
-}
-let fallbackLoading = null;
-function showFallback() {
-  if (state.initialShown && !state.showingFallback) {
-    refreshUi();
-    return;
-  }
-  if (!fallbackLoading) {
-    fallbackLoading = mapApp.loadDefaultLayout().then((layout) => {
-      state.fallbackLayout = layout;
-      state.initialShown = true;
-      state.showingFallback = true;
-      mapApp.setStatus("");
-    }).catch((error) => {
-      console.error("published layout load failed", error);
-      mapApp.setStatus("公開用の配置を読み込めません: " + error.message);
-    }).finally(refreshUi);
-  }
-  refreshUi();
-}
 
-// ---- 起動 ----
+
+// 最初のスナップショットがこの時間内に届かなければ default-layout.json を表示する。
+const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
+
 async function start() {
   mapApp.attachCloud();
   el.controls.hidden = false;
   refreshUi();
   try {
-    const [appModule, authModule, firestoreModule] = await Promise.all([
-      import(SDK_BASE + "firebase-app.js"),
-      import(SDK_BASE + "firebase-auth.js"),
-      import(SDK_BASE + "firebase-firestore.js")
-    ]);
-    sdk = { ...appModule, ...authModule, ...firestoreModule };
+    await loadSdk();
   } catch (error) {
     // SDK を読み込めない場合は、Web に接続しない従来の動作（すべての操作が使える）に戻す。
     console.error("firebase sdk load failed", error);
@@ -1006,19 +773,16 @@ async function start() {
   mapApp.setRole("viewer");
   mapApp.onLocalChange(handleLocalChange);
   mapApp.setUnloadGuard(hasUnsavedWork);
-  const firebaseApp = sdk.initializeApp(FIREBASE_CONFIG);
-  db = sdk.initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
-  mapRef = sdk.doc(db, "maps", "main");
-  historyRef = sdk.collection(db, "maps", "main", "history");
+  const firebaseApp = connectFirestore();
   setupHistoryUi();
   window.setTimeout(() => { if (!state.initialShown) showFallback(); }, FIRST_SNAPSHOT_TIMEOUT_MS);
   sdk.onSnapshot(mapRef, { includeMetadataChanges: true }, handleSnapshot, (error) => {
     console.error("map snapshot failed", error);
     showFallback();
   });
-  // ログイン状態はブラウザに保持する（browserLocalPersistence）。
-  auth = sdk.initializeAuth(firebaseApp, { persistence: sdk.browserLocalPersistence });
+  connectAuth(firebaseApp);
   setupLoginUi();
+  document.getElementById("saveInitialViewButton").addEventListener("click", saveInitialView);
   sdk.onAuthStateChanged(auth, handleAuthChanged);
 }
 window.addEventListener("online", () => { state.online = true; refreshUi(); });
