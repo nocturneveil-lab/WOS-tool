@@ -20,6 +20,8 @@ const LOGIN_FAILED_MESSAGE = "アカウント名または合言葉が違いま�
 const SDK_BASE = "https://www.gstatic.com/firebasejs/13.0.0/";
 // 最初のスナップショットがこの時間内に届かなければ default-layout.json を表示する。
 const FIRST_SNAPSHOT_TIMEOUT_MS = 8000;
+// 最後の変更からこの時間が経ったら、まとめてWebに保存する。
+const SAVE_DEBOUNCE_MS = 1000;
 
 const mapApp = window.AllianceMapApp;
 
@@ -39,10 +41,20 @@ const state = {
   role: "viewer",
   // saver のアカウント名
   account: "",
-  // editor：ローカルで変更している
+  // Webに保存されないローカルの変更がある（editor、またはオフライン表示中の saver）
   localDirty: false,
-  // editor：ローカル変更中にWebが更新された
-  remoteChangedWhileDirty: false
+  // ローカル変更中にWebが更新された
+  remoteChangedWhileDirty: false,
+  // ---- saver の自動保存 ----
+  // 保存待ちの変更がある
+  dirty: false,
+  saving: false,
+  saveError: false,
+  lastSavedAt: null,
+  // ローカルの内容のもとになった maps/main の rev（衝突の検知に使う）
+  baseRev: 0,
+  // 自分が保存した内容のキー（自分の書き込みの反映を見分けるため。古い順）
+  recentSavedKeys: []
 };
 
 let sdk = null;
@@ -162,28 +174,63 @@ function applyRemoteLayout(layout, initial) {
 
 // Webの最新（未登録・オフライン時は default-layout.json）に戻す。表示位置は変えない。
 function revertToLatest() {
-  const latest = state.remote && !state.showingFallback ? state.remote.layout : state.fallbackLayout;
+  const useRemote = state.remote && !state.showingFallback;
+  const latest = useRemote ? state.remote.layout : state.fallbackLayout;
   if (latest && !applyRemoteLayout(latest, false)) return;
+  if (useRemote) state.baseRev = state.remote.rev;
   state.localDirty = false;
   state.remoteChangedWhileDirty = false;
   refreshUi();
 }
+// 保存用のレイアウト。表示位置（view.center / zoom）は自分の画面ではなく、Webの初期表示を保つ。
+function buildSaveLayout() {
+  const layout = mapApp.getLayout();
+  const source = state.remote && !state.showingFallback ? state.remote.layout : state.fallbackLayout;
+  const sharedView = source && source.view && typeof source.view === "object" ? source.view : {};
+  layout.view = {
+    center: sharedView.center || { x: 0, y: 0 },
+    zoom: Number.isFinite(sharedView.zoom) ? sharedView.zoom : layout.view.zoom,
+    mapCols: layout.view.mapCols,
+    mapRows: layout.view.mapRows
+  };
+  return layout;
+}
+function rememberSavedKey(layout) {
+  state.recentSavedKeys.push(layoutContentKey(layout));
+  if (state.recentSavedKeys.length > 10) state.recentSavedKeys.shift();
+}
 
 // ---- 表示状態の更新 ----
 function refreshBanner() {
-  if (state.role === "editor" && state.localDirty) {
-    showBanner(state.remoteChangedWhileDirty ? "Webで更新がありました" : "ローカル編集中（保存されません）",
-      [{ label: "最新に戻す", onClick: revertToLatest }]);
+  const canRegister = state.role === "saver" && state.docMissing;
+  const registerAction = { label: "公開用の配置をWebに登録", onClick: registerMap };
+  if (state.localDirty) {
+    const text = state.remoteChangedWhileDirty ? "Webで更新がありました" :
+      state.role === "editor" ? "ローカル編集中（保存されません）" : "オフライン表示中の変更は保存されません";
+    const actions = [{ label: "最新に戻す", onClick: revertToLatest }];
+    if (canRegister) actions.push(registerAction);
+    showBanner(text, actions);
     return;
   }
   if (state.showingFallback) {
     showBanner(state.docMissing ? "Webにマップが未登録のため、公開用の配置を表示しています" :
-      "オフライン表示（Webに接続できないため、公開用の配置を表示しています）", [], "offline");
+      "オフライン表示（Webに接続できないため、公開用の配置を表示しています）", canRegister ? [registerAction] : [], "offline");
     return;
   }
   hideBanner();
 }
 function refreshStatus() {
+  if (state.role === "saver" && state.remote && !state.showingFallback) {
+    const pending = state.dirty || state.saving;
+    if (state.saveError) setCloudStatus("保存失敗", { error: true, action: { label: "再試行", onClick: saveNow } });
+    else if (!state.online) setCloudStatus(pending ? "オフライン（未保存の変更あり）" : "オフライン", { error: true });
+    else if (pending) setCloudStatus("保存中…");
+    else {
+      const savedAt = state.lastSavedAt || state.remote.updatedAt;
+      setCloudStatus(savedAt ? "保存済み " + formatTime(savedAt) : "Web同期中");
+    }
+    return;
+  }
   if (!state.online) setCloudStatus("オフライン", { error: true });
   else if (state.showingFallback) setCloudStatus("オフライン表示");
   else if (state.remote) setCloudStatus("Web同期中");
@@ -212,26 +259,121 @@ function processRemote() {
     return;
   }
   if (isSameAsLocal(state.remote.layout)) {
-    if (state.role === "editor") {
+    state.baseRev = Math.max(state.baseRev, state.remote.rev);
+    if (state.localDirty) {
       state.localDirty = false;
       state.remoteChangedWhileDirty = false;
       refreshUi();
     }
     return;
   }
-  if (state.role === "editor" && state.localDirty) {
+  if (state.localDirty) {
     state.remoteChangedWhileDirty = true;
     refreshUi();
     return;
   }
-  applyRemoteLayout(state.remote.layout, false);
+  if (state.role === "saver") {
+    // 保存待ち・保存中は自分の内容で上書きするので適用しない。
+    if (state.dirty || state.saving || state.saveError) return;
+    // 自分が先に保存した古い内容の反映は無視する（新しい保存の反映がこのあと届く）。
+    if (state.remote.own) return;
+  }
+  if (applyRemoteLayout(state.remote.layout, false)) state.baseRev = state.remote.rev;
 }
 
 // ---- ローカルの変更 ----
 function handleLocalChange() {
-  if (state.role === "editor") {
+  if (state.role === "editor" || (state.role === "saver" && (state.showingFallback || !state.remote))) {
+    // editor の変更と、Webの内容をもとにしていない saver の変更は保存しない。
     state.localDirty = true;
     refreshUi();
+    return;
+  }
+  if (state.role === "saver") {
+    state.dirty = true;
+    scheduleSave();
+    refreshUi();
+  }
+}
+
+// ---- 自動保存（saver） ----
+let saveTimer = 0;
+function scheduleSave() {
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(saveNow, SAVE_DEBOUNCE_MS);
+}
+function cancelScheduledSave() {
+  window.clearTimeout(saveTimer);
+  state.dirty = false;
+  state.saveError = false;
+}
+function mapDocument(layout) {
+  return {
+    ...layout,
+    updatedAt: sdk.serverTimestamp(),
+    updatedBy: state.account
+  };
+}
+async function saveNow() {
+  window.clearTimeout(saveTimer);
+  if (state.saving || state.role !== "saver" || !state.remote || state.showingFallback) return;
+  if (!state.dirty && !state.saveError) return;
+  state.dirty = false;
+  state.saveError = false;
+  state.saving = true;
+  refreshStatus();
+  const layout = buildSaveLayout();
+  if (state.remote.rev > state.baseRev) {
+    // 後から保存した側が優先。上書きされた内容は履歴（編集開始前）から復元できる。
+    showToast("他の人が先に更新しました。あなたの内容で上書きします");
+  }
+  rememberSavedKey(layout);
+  try {
+    await sdk.updateDoc(mapRef, { ...mapDocument(layout), rev: sdk.increment(1) });
+    state.lastSavedAt = new Date();
+  } catch (error) {
+    console.error("map save failed", error);
+    state.saveError = true;
+  } finally {
+    state.saving = false;
+  }
+  if (state.dirty && !state.saveError) scheduleSave();
+  refreshUi();
+  if (!state.dirty && !state.saveError) processRemote();
+}
+// Webにマップがないとき、表示中の配置を maps/main として登録する。
+async function registerMap() {
+  if (state.role !== "saver" || !state.docMissing) return;
+  if (!window.confirm("表示中の配置をWebに登録します。よろしいですか？")) return;
+  const layout = buildSaveLayout();
+  try {
+    await sdk.setDoc(mapRef, { ...mapDocument(layout), rev: 1 });
+    state.localDirty = false;
+    state.remoteChangedWhileDirty = false;
+    showToast("Webに登録しました");
+  } catch (error) {
+    console.error("map register failed", error);
+    showToast("Webに登録できません");
+  }
+  refreshUi();
+}
+// 現在の表示位置とズームを、全員の初期表示として保存する。
+async function saveInitialView() {
+  if (state.role !== "saver" || !state.remote || state.showingFallback) return;
+  const view = mapApp.getLayout().view;
+  try {
+    await sdk.updateDoc(mapRef, {
+      "view.center": view.center,
+      "view.zoom": view.zoom,
+      updatedAt: sdk.serverTimestamp(),
+      updatedBy: state.account,
+      rev: sdk.increment(1)
+    });
+    mapApp.setZoomBase(view.zoom);
+    setSettingsMessage("現在の表示を初期表示にしました");
+  } catch (error) {
+    console.error("initial view save failed", error);
+    setSettingsMessage("初期表示を保存できません", true);
   }
 }
 
@@ -254,14 +396,15 @@ function handleAuthChanged(user) {
     sdk.signOut(auth).catch((error) => console.error("sign out failed", error));
     return;
   }
-  const previousRole = state.role;
+  const hadUnsavedWork = hasUnsavedWork();
   state.role = next.role;
   state.account = next.account;
-  if (previousRole !== "viewer" && next.role === "viewer" && state.localDirty) {
-    // ログアウトしたら、ローカルの変更を捨ててWebの最新に戻す。
+  if (next.role !== "saver") cancelScheduledSave();
+  if (next.role === "viewer" && hadUnsavedWork) {
+    // ログアウトしたら、保存されていない変更を捨ててWebの最新に戻す。
     revertToLatest();
   }
-  if (next.role !== "editor") {
+  if (next.role === "viewer") {
     state.localDirty = false;
     state.remoteChangedWhileDirty = false;
   }
@@ -269,8 +412,10 @@ function handleAuthChanged(user) {
   refreshUi();
   processRemote();
 }
+// 離脱警告の判定。editor はローカルの変更、saver は保存待ち（と保存されない変更）があるとき。
 function hasUnsavedWork() {
-  return state.role === "editor" && state.localDirty;
+  if (state.role === "viewer") return false;
+  return state.localDirty || state.dirty || state.saving || state.saveError;
 }
 
 // ---- ログイン ----
@@ -357,6 +502,7 @@ function setupLoginUi() {
     if (event.key === "Escape" && !el.loginDialog.hidden) closeLoginDialog();
   });
   el.changePasswordButton.addEventListener("click", changePassword);
+  document.getElementById("saveInitialViewButton").addEventListener("click", saveInitialView);
 }
 
 // ---- 合言葉の変更（saver） ----
@@ -407,19 +553,43 @@ function handleSnapshot(snapshot) {
     return;
   }
   const data = snapshot.data();
+  const layout = pickLayout(data);
+  const key = layoutContentKey(layout);
+  const rev = Number.isFinite(data.rev) ? data.rev : 0;
+  // 自分の保存の反映かどうか。届いた分より前の自分の保存は、もう反映済みなので忘れる。
+  const savedIndex = state.recentSavedKeys.lastIndexOf(key);
+  let own = false;
+  if (savedIndex !== -1) {
+    state.recentSavedKeys.splice(0, savedIndex + 1);
+    state.baseRev = Math.max(state.baseRev, rev);
+    own = true;
+  } else if (state.remote && state.remote.own && state.remote.key === key) {
+    own = true;
+  }
   state.docMissing = false;
-  state.remote = { layout: pickLayout(data), rev: data.rev || 0, updatedBy: data.updatedBy || "" };
+  state.remote = {
+    layout,
+    key,
+    rev,
+    own,
+    updatedBy: data.updatedBy || "",
+    updatedAt: data.updatedAt && typeof data.updatedAt.toDate === "function" ? data.updatedAt.toDate() : null
+  };
   if (!state.initialShown) {
     // 初回は表示位置（view）も適用する。
     if (applyRemoteLayout(state.remote.layout, true)) {
       state.initialShown = true;
+      state.baseRev = rev;
       mapApp.setStatus("");
     }
   } else if (state.showingFallback) {
     // オフライン表示中にWebへつながった。ローカルで変更していなければ初回と同じ扱いで表示する。
     state.showingFallback = false;
-    if (hasUnsavedWork()) state.remoteChangedWhileDirty = true;
-    else applyRemoteLayout(state.remote.layout, true);
+    if (state.localDirty && !isSameAsLocal(layout)) state.remoteChangedWhileDirty = true;
+    else if (applyRemoteLayout(state.remote.layout, true)) {
+      state.localDirty = false;
+      state.baseRev = rev;
+    }
   } else {
     processRemote();
   }

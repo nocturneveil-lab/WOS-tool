@@ -227,6 +227,7 @@
   .cloud-message{min-height:1.2em;margin:6px 0 0;font-size:12px;color:var(--text-sub);}
   .cloud-message.error{color:#dc3545;}
   .settings-cloud{margin-top:18px;}
+  .settings-cloud .login-note{margin:6px 0 14px;}
   .settings-cloud-row{display:flex;flex-wrap:wrap;gap:6px;}
   .settings-cloud-row input{flex:1 1 140px;min-width:0;padding:6px 8px;border:1px solid var(--panel-border);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;}
   .cloud-banner[hidden]{display:none;}
@@ -371,6 +372,11 @@
       <label class="settings-color-row"><span>配置不能</span><input type="color" data-object-color="unavailable" value="#b8b8b8"></label>
     </div>
     <div class="settings-cloud" data-role-ui="saver">
+      <h3>初期表示（全員共通）</h3>
+      <div class="settings-cloud-row">
+        <button id="saveInitialViewButton" type="button">現在の表示を初期表示にする</button>
+      </div>
+      <p class="login-note">色・MAPサイズ・熊罠の文字サイズは、保存するとWebに自動保存されます。</p>
       <h3>自分の合言葉を変更</h3>
       <div class="settings-cloud-row">
         <input id="newPasswordInput" type="password" autocomplete="new-password" minlength="6" placeholder="新しい合言葉（6文字以上）">
