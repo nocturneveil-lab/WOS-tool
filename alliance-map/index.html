@@ -683,10 +683,15 @@
     }
     var view = imported.view && typeof imported.view === "object" ? imported.view : {};
     var nextZoom = Number.isFinite(view.zoom) ? Math.max(0.25, Math.min(4, view.zoom)) : zoomBase;
+    // 表示位置は画面サイズに依存しない view.center（マス単位）で扱う。旧形式の panX/panY は使わない。
+    var nextCenter = view.center && typeof view.center === "object" &&
+      Number.isFinite(view.center.x) && Number.isFinite(view.center.y) ?
+      { x: view.center.x, y: view.center.y } : { x: 0, y: 0 };
     var nextMapCols = Number.isInteger(view.mapCols) ? clampMapSize(view.mapCols, 32, 10, 80) : mapCols;
     var nextMapRows = Number.isInteger(view.mapRows) ? clampMapSize(view.mapRows, 32, 10, 80) : mapRows;
     var nextBearTrapLabelSize = Number.isInteger(imported.bearTrapLabelSize) ?
       clampMapSize(imported.bearTrapLabelSize, DEFAULT_BEAR_TRAP_LABEL_SIZE, 6, 30) : bearTrapLabelSize;
+    // ここまでで検証を終え、以降だけで状態を書き換える（途中で例外が起きても状態が壊れないように）。
     rememberMapState();
     classifications = nextClassifications;
     placements = nextPlacements;
