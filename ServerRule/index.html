@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-t="site_title">2863王国 ポータルサイト</title>
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://script.googleusercontent.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Tailwind（事前ビルド済み。クラスを追加した場合は再ビルドが必要） -->
+    <style>*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.14 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:Noto Sans JP,sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.container{width:100%}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}@media (min-width:1536px){.container{max-width:1536px}}.visible{visibility:visible}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.col-span-full{grid-column:1/-1}.mx-auto{margin-left:auto;margin-right:auto}.mb-0{margin-bottom:0}.mb-0\.5{margin-bottom:.125rem}.mb-2{margin-bottom:.5rem}.mb-2\.5{margin-bottom:.625rem}.mb-4{margin-bottom:1rem}.ml-auto{margin-left:auto}.mt-0{margin-top:0}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-12{height:3rem}.h-2{height:.5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-full{height:100%}.w-10{width:2.5rem}.w-12{width:3rem}.w-2{width:.5rem}.w-24{width:6rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[560px\]{min-width:560px}.max-w-3xl{max-width:48rem}.shrink-0{flex-shrink:0}@keyframes ping{75%,to{transform:scale(2);opacity:0}}.animate-ping{animation:ping 1s cubic-bezier(0,0,.2,1) infinite}.scroll-mt-4{scroll-margin-top:1rem}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.space-y-6>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-alert-light>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(246 216 209/var(--tw-divide-opacity))}.divide-ice-light>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(220 235 246/var(--tw-divide-opacity))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.truncate{overflow:hidden;text-overflow:ellipsis}.truncate,.whitespace-nowrap{white-space:nowrap}.whitespace-pre-wrap{white-space:pre-wrap}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-b-2{border-bottom-width:2px}.border-alert-light{--tw-border-opacity:1;border-color:rgb(246 216 209/var(--tw-border-opacity))}.border-gold{--tw-border-opacity:1;border-color:rgb(232 196 106/var(--tw-border-opacity))}.border-gold-line{--tw-border-opacity:1;border-color:rgb(233 212 155/var(--tw-border-opacity))}.border-ice-light{--tw-border-opacity:1;border-color:rgb(220 235 246/var(--tw-border-opacity))}.bg-act{--tw-bg-opacity:1;background-color:rgb(15 110 86/var(--tw-bg-opacity))}.bg-act-light{--tw-bg-opacity:1;background-color:rgb(225 245 238/var(--tw-bg-opacity))}.bg-alert-light{--tw-bg-opacity:1;background-color:rgb(246 216 209/var(--tw-bg-opacity))}.bg-alert-pale{--tw-bg-opacity:1;background-color:rgb(255 244 242/var(--tw-bg-opacity))}.bg-frost{--tw-bg-opacity:1;background-color:rgb(244 248 251/var(--tw-bg-opacity))}.bg-gold{--tw-bg-opacity:1;background-color:rgb(232 196 106/var(--tw-bg-opacity))}.bg-gold-pale{--tw-bg-opacity:1;background-color:rgb(251 243 221/var(--tw-bg-opacity))}.bg-ice-light{--tw-bg-opacity:1;background-color:rgb(220 235 246/var(--tw-bg-opacity))}.bg-ice-pale{--tw-bg-opacity:1;background-color:rgb(238 245 251/var(--tw-bg-opacity))}.bg-navy{--tw-bg-opacity:1;background-color:rgb(14 42 71/var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity))}.object-cover{-o-object-fit:cover;object-fit:cover}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-4{padding:1rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.py-0{padding-top:0;padding-bottom:0}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.py-7{padding-top:1.75rem;padding-bottom:1.75rem}.pb-2{padding-bottom:.5rem}.pb-2\.5{padding-bottom:.625rem}.pb-4{padding-bottom:1rem}.pt-2{padding-top:.5rem}.text-left{text-align:left}.text-center{text-align:center}.font-cinzel{font-family:Cinzel,serif}.font-sans{font-family:Noto Sans JP,sans-serif}.text-2xl{font-size:1.5rem;line-height:2rem}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction)}.leading-relaxed{line-height:1.625}.tracking-\[0\.25em\]{letter-spacing:.25em}.tracking-wide{letter-spacing:.025em}.tracking-wider{letter-spacing:.05em}.text-act{--tw-text-opacity:1;color:rgb(15 110 86/var(--tw-text-opacity))}.text-act-light{--tw-text-opacity:1;color:rgb(225 245 238/var(--tw-text-opacity))}.text-act-text{--tw-text-opacity:1;color:rgb(4 52 44/var(--tw-text-opacity))}.text-alert{--tw-text-opacity:1;color:rgb(200 85 61/var(--tw-text-opacity))}.text-alert-text{--tw-text-opacity:1;color:rgb(110 42 30/var(--tw-text-opacity))}.text-frost{--tw-text-opacity:1;color:rgb(244 248 251/var(--tw-text-opacity))}.text-gold{--tw-text-opacity:1;color:rgb(232 196 106/var(--tw-text-opacity))}.text-gold-deep{--tw-text-opacity:1;color:rgb(122 90 18/var(--tw-text-opacity))}.text-gold-text{--tw-text-opacity:1;color:rgb(61 44 5/var(--tw-text-opacity))}.text-ice-light{--tw-text-opacity:1;color:rgb(220 235 246/var(--tw-text-opacity))}.text-ice-light\/80{color:rgba(220,235,246,.8)}.text-ice-text{--tw-text-opacity:1;color:rgb(30 78 121/var(--tw-text-opacity))}.text-navy{--tw-text-opacity:1;color:rgb(14 42 71/var(--tw-text-opacity))}.text-navy-mute{--tw-text-opacity:1;color:rgb(74 102 128/var(--tw-text-opacity))}.text-navy-soft{--tw-text-opacity:1;color:rgb(30 58 85/var(--tw-text-opacity))}.underline{text-decoration-line:underline}.underline-offset-2{text-underline-offset:2px}.opacity-60{opacity:.6}.ring-2{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.ring-gold{--tw-ring-opacity:1;--tw-ring-color:rgb(232 196 106/var(--tw-ring-opacity))}.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.hover\:bg-act-hover:hover{--tw-bg-opacity:1;background-color:rgb(11 86 68/var(--tw-bg-opacity))}.hover\:bg-ice-pale:hover{--tw-bg-opacity:1;background-color:rgb(238 245 251/var(--tw-bg-opacity))}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@media (min-width:640px){.sm\:hidden{display:none}.sm\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.sm\:p-6{padding:1.5rem}.sm\:p-7{padding:1.75rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:py-10{padding-top:2.5rem;padding-bottom:2.5rem}.sm\:py-9{padding-top:2.25rem;padding-bottom:2.25rem}.sm\:text-2xl{font-size:1.5rem;line-height:2rem}.sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}.sm\:text-base{font-size:1rem;line-height:1.5rem}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}.sm\:text-sm{font-size:.875rem;line-height:1.25rem}.sm\:text-xs{font-size:.75rem;line-height:1rem}}@media (min-width:768px){.md\:col-span-2{grid-column:span 2/span 2}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>
+    <style>
+        /*
+         * 配色ルール（色は「場所」ではなく「意味」で使う）
+         *  紺 navy  : 見出し・ヘッダー（王国の顔）
+         *  氷青 ice : 通常の情報（ルール・ガイド・イベント）
+         *  金 gold  : 王国の権威・特典（ダブルWIN、官職）
+         *  緑 act   : アクション（申請ボタン）だけ
+         *  赤 alert : 違反プロトコルだけ
+         */
+        html { scroll-behavior: smooth; }
+        body { background: #F4F8FB; }
+        section[id] { scroll-margin-top: 16px; }
+        .panel { background: #FFFFFF; border: 1px solid #D5E2EE; }
+        .ttable th, .ttable td { padding: 10px 12px; border-bottom: 1px solid #E3ECF4; vertical-align: top; }
+        .ttable tbody tr:last-child td { border-bottom: none; }
+        .ttable .stick { position: sticky; left: 0; z-index: 1; }
+    </style>
+</head>
+<body class="text-navy-soft font-sans">
+
+<div class="max-w-3xl mx-auto px-3 sm:px-6 py-5 sm:py-10 space-y-5">
+
+    <!-- ===== HEADER ===== -->
+    <header class="bg-navy rounded-2xl px-5 py-7 sm:py-9 text-center">
+        <svg class="w-10 h-10 mx-auto text-gold" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+        </svg>
+        <p class="font-cinzel text-gold text-[11px] sm:text-xs tracking-[0.25em] mt-3" data-t="header_kicker">WHITEOUT SURVIVAL · #2863</p>
+        <h1 class="text-frost text-2xl sm:text-4xl font-black tracking-wider mt-2" data-t="header_title">2863王国 サーバールール</h1>
+        <p class="text-ice-light/80 text-xs sm:text-sm mt-2" data-t="header_subtitle">2863王国プレイヤー向けポータル</p>
+    </header>
+
+    <!-- ===== JUMP NAV ===== -->
+    <nav class="grid grid-cols-3 gap-2" aria-label="ページ内リンク">
+        <a href="#promise"  class="panel rounded-xl py-2.5 text-center text-xs sm:text-sm font-bold text-navy hover:bg-ice-pale transition" data-t="nav_promise">サーバーの約束</a>
+        <a href="#event"    class="panel rounded-xl py-2.5 text-center text-xs sm:text-sm font-bold text-navy hover:bg-ice-pale transition" data-t="nav_event">イベントガイド</a>
+        <a href="#alliance" class="panel rounded-xl py-2.5 text-center text-xs sm:text-sm font-bold text-navy hover:bg-ice-pale transition" data-t="nav_alliance">同盟紹介</a>
+    </nav>
+
+    <!-- ===== LOADING / ERROR ===== -->
+    <div id="loading-status" class="panel rounded-xl py-5 text-center text-sm font-bold text-navy-mute" data-t="loading_text">
+        スプレッドシートからデータを読み込んでいます...
+    </div>
+
+    <!-- ===== EVENT FORMS（受付中のみ表示） ===== -->
+    <section id="forms-section" class="hidden panel rounded-2xl p-4 sm:p-6">
+        <div class="flex items-center gap-2.5 pb-2.5 mb-4 border-b-2 border-ice-light">
+            <span class="bg-navy text-gold font-cinzel font-bold text-[11px] px-2.5 py-0.5 rounded whitespace-nowrap" data-t="forms_badge">EVENT FORM</span>
+            <h2 class="text-base sm:text-lg font-black text-navy" data-t="forms_title">期間限定 申請・受付フォーム</h2>
+            <span class="ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold text-act whitespace-nowrap">
+                <span class="relative flex w-2 h-2"><span class="absolute inline-flex w-full h-full rounded-full bg-act opacity-60 animate-ping"></span><span class="relative inline-flex w-2 h-2 rounded-full bg-act"></span></span>
+                <span data-t="forms_status">受付中</span>
+            </span>
+        </div>
+        <div id="forms-container" class="grid gap-3"></div>
+    </section>
+
+    <!-- ===== 1. サーバーの約束 ===== -->
+    <section id="promise" class="panel rounded-2xl p-4 sm:p-7 space-y-6">
+        <div class="flex items-center gap-2.5 pb-2.5 border-b-2 border-gold">
+            <span class="bg-navy text-gold font-cinzel font-bold text-[11px] sm:text-xs px-2.5 py-0.5 rounded whitespace-nowrap" data-t="promise_badge">PROMISE</span>
+            <h2 class="text-lg sm:text-2xl font-black text-navy" data-t="promise_title">#2863 サーバーの約束</h2>
+        </div>
+
+        <!-- 友好協定（サーバーの特徴） -->
+        <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <h3 class="font-black text-navy text-sm sm:text-base" data-t="feature_title">友好協定・サーバーの特徴</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5" data-t="feature_desc">2863王国は、全同盟が協力し合う平和な王国です。</p>
+            <ul id="server-features" class="bg-white border border-ice-light rounded-lg divide-y divide-ice-light text-xs sm:text-sm text-navy-soft leading-relaxed">
+                <li class="px-3 py-2.5">読み込み中...</li>
+            </ul>
+        </div>
+
+        <!-- 基本ルール -->
+        <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                <h3 class="font-black text-navy text-sm sm:text-base" data-t="rules_title">基本ルール</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5" data-t="rules_desc">王国内のすべてのプレイヤーが守るルールです。</p>
+            <ol id="rules-container" class="bg-white border border-ice-light rounded-lg divide-y divide-ice-light text-xs sm:text-sm text-navy-soft leading-relaxed">
+                <li class="px-3 py-2.5 text-navy-mute">読み込み中...</li>
+            </ol>
+        </div>
+
+        <!-- 違反対応プロトコル（赤＝違反だけ） -->
+        <div class="bg-alert-pale border border-alert-light rounded-xl p-4">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-alert-light">
+                <svg class="w-5 h-5 text-alert shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <h3 class="font-black text-alert-text text-sm sm:text-base" data-t="violation_title">違反対応プロトコル</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-alert-text leading-relaxed mb-2.5" data-t="violation_desc">ルール違反が発生した場合は、以下の手順で対応してください。</p>
+            <ol id="violations-container" class="bg-white border border-alert-light rounded-lg divide-y divide-alert-light text-xs sm:text-sm text-alert-text leading-relaxed">
+                <li class="px-3 py-2.5">読み込み中...</li>
+            </ol>
+        </div>
+
+        <!-- バフ使用ガイド（官職＝金のアクセント） -->
+        <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <h3 class="font-black text-navy text-sm sm:text-base" data-t="buff_title">バフ使用ガイド</h3>
+            </div>
+            <p id="config-buff_text" class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5">読み込み中...</p>
+            <div id="buff-notes" class="bg-white border border-ice-light rounded-lg px-3 py-2.5 text-xs sm:text-sm leading-relaxed">
+                <p class="font-bold text-gold-deep flex items-center gap-1.5 mb-0.5">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
+                    <span id="config-buff_note_title">読み込み中...</span>
+                </p>
+                <p id="config-buff_note_desc" class="text-navy-soft">読み込み中...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 2. イベントガイド ===== -->
+    <section id="event" class="panel rounded-2xl p-4 sm:p-7 space-y-6">
+        <div class="flex items-center gap-2.5 pb-2.5 border-b-2 border-gold">
+            <span class="bg-navy text-gold font-cinzel font-bold text-[11px] sm:text-xs px-2.5 py-0.5 rounded whitespace-nowrap" data-t="event_badge">EVENT</span>
+            <h2 class="text-lg sm:text-2xl font-black text-navy" data-t="event_title">イベントガイド</h2>
+        </div>
+
+        <!-- 3枚とも同じ型（見出し＋区切り線＋白い中箱）。色は 氷青＝情報 / 金＝特典 -->
+        <div class="space-y-4">
+
+            <!-- カード1：最強王国（SVS） -->
+            <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+                <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                    <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/>
+                    </svg>
+                    <h3 class="font-black text-navy text-sm sm:text-base" data-t="svs_title">最強王国（SVS）</h3>
+                </div>
+                <p id="config-svs_desc" class="hidden text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5"></p>
+                <ul id="svs-rules" class="bg-white border border-ice-light rounded-lg divide-y divide-ice-light text-xs sm:text-sm text-navy-soft leading-relaxed">
+                    <li class="px-3 py-2.5 text-navy-mute">読み込み中...</li>
+                </ul>
+            </div>
+
+            <!-- カード2：ご褒美・特典（特典＝金） -->
+            <div class="bg-gold-pale border border-gold-line rounded-xl p-4">
+                <div class="flex items-center gap-2 pb-2 mb-2 border-b border-gold-line">
+                    <svg class="w-5 h-5 text-gold-deep shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                    </svg>
+                    <h3 id="config-bonus_title" class="font-black text-gold-text text-sm sm:text-base">完全勝利（ダブルWIN）特別特典</h3>
+                </div>
+                <p id="config-bonus_desc" class="text-xs sm:text-sm text-gold-text leading-relaxed mb-2.5">読み込み中...</p>
+                <div id="config-bonus_text" class="bg-white border border-gold-line rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-gold-text whitespace-pre-wrap leading-relaxed">読み込み中...</div>
+            </div>
+
+            <!-- カード3：その他のイベント体制 -->
+            <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+                <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                    <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
+                    </svg>
+                    <h3 class="font-black text-navy text-sm sm:text-base" data-t="other_title">その他のイベント体制</h3>
+                </div>
+                <p id="other-desc" class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5">
+                    <span data-t="other_desc">各同盟の参加時間は</span> <a href="#alliance-times" class="text-ice-text font-bold underline underline-offset-2" data-t="other_link">同盟イベント時間表</a> <span data-t="other_desc_after">を確認してください。</span>
+                </p>
+                <ul id="other-events" class="bg-white border border-ice-light rounded-lg divide-y divide-ice-light text-xs sm:text-sm text-navy-soft leading-relaxed">
+                    <li class="px-3 py-2.5 text-navy-mute">読み込み中...</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 3. 同盟紹介 ===== -->
+    <section id="alliance" class="panel rounded-2xl p-4 sm:p-7 space-y-6">
+        <div class="flex items-center gap-2.5 pb-2.5 border-b-2 border-gold">
+            <span class="bg-navy text-gold font-cinzel font-bold text-[11px] sm:text-xs px-2.5 py-0.5 rounded whitespace-nowrap" data-t="alliance_badge">ALLIANCE</span>
+            <h2 class="text-lg sm:text-2xl font-black text-navy" data-t="alliance_title">同盟紹介</h2>
+        </div>
+
+        <!-- 同盟PR -->
+        <div id="alliance-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+
+        <!-- 同盟イベント時間表 -->
+        <div id="alliance-times" class="bg-ice-pale border border-ice-light rounded-xl p-4 scroll-mt-4">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                <svg class="w-5 h-5 text-ice-text shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h3 class="font-black text-navy text-sm sm:text-base" data-t="times_title">同盟イベント時間表</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5" data-t="times_desc">各同盟の主なイベント開始時間です。</p>
+            <div class="overflow-x-auto rounded-lg border border-ice-light">
+                <table class="ttable w-full min-w-[560px] text-xs sm:text-sm">
+                    <thead id="times-head" class="bg-navy text-frost"></thead>
+                    <tbody id="times-body" class="bg-white"></tbody>
+                </table>
+            </div>
+            <p class="text-[11px] text-navy-mute mt-1.5 sm:hidden" data-t="times_scroll_hint">← 表は横にスクロールできます</p>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="text-center text-xs text-navy-mute space-y-1.5 pt-2 pb-4">
+        <p id="contact-line" class="hidden text-navy-soft"></p>
+        <p data-t="last_updated">Last Updated : 2026.10</p>
+        <p class="text-[11px]" data-t="footer_credit">#2863 | Junk Wage Slave Food</p>
+    </footer>
+</div>
+
+<script>
+    // 互換性のため既存のGAS URLも残すが、ここではスプシのgviz URLを優先して読み込む
+    const SCRIPT_URL = "";
+    const SPREADSHEET_ID = "1vZQuzRFY62wWvovICo33Mj0ARVKG29NxctgujrQngtE";
+    const SPREADSHEET_SHEETS = [
+        { section: 'cover', names: ['cover', '表紙'] },
+        { section: 'promise', names: ['promise', 'サーバー', '基本ルール'] },
+        { section: 'event', names: ['event', 'イベント'] },
+        { section: 'alliance', names: ['alliance', '同盟'] },
+    ];
+
+    // 同盟イベント時間表の列（シートの列名がそのまま見出し。データ読み込み時に置き換わる）
+    let TIME_COLUMNS = [
+        { key: 'bear',     labelKey: 'col_bear',     label: '熊罠' },
+        { key: 'weapon',   labelKey: 'col_weapon',   label: '兵器工場リーグ戦' },
+        { key: 'canyon',   labelKey: 'col_canyon',   label: '峡谷合戦' },
+        { key: 'crazyjoy', labelKey: 'col_crazyjoy', label: 'クレイジージョイ' },
+    ];
+
+    /* ---------- 文言（configシートで上書き可能） ---------- */
+    let CFG = {};
+    // config に値があればそれを、無ければ既定値を返す
+    function t(key, fallback) {
+        const v = CFG[key];
+        return (v === undefined || v === null || String(v).trim() === '') ? fallback : String(v);
+    }
+    // data-t 属性の付いた要素をすべて config の値で置き換える
+    function applyTexts() {
+        document.querySelectorAll('[data-t]').forEach(el => {
+            const k = el.dataset.t;
+            if (!(k in CFG)) return;
+            const v = CFG[k] === null || CFG[k] === undefined ? '' : String(CFG[k]);
+            if (v.trim() !== '') { el.textContent = v; el.classList.remove('hidden'); }
+            else if (/_desc$/.test(k)) el.classList.add('hidden');   // 説明文が空なら隠す
+        });
+        if (CFG.site_title) document.title = CFG.site_title;
+    }
+
+    /* ---------- ユーティリティ ---------- */
+    function escapeHtml(str) {
+        if (str === undefined || str === null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function toArray(val) {
+        if (Array.isArray(val)) return val;
+        if (val === undefined || val === null || val === '') return [];
+        return String(val).split(/[,、，\n]/).map(s => s.trim()).filter(Boolean);
+    }
+
+    // Safari(iOS)でも解釈できる形に変換
+    function parseDate(str) {
+        if (!str) return null;
+        const d = new Date(String(str).trim().replace(/-/g, '/').replace('T', ' '));
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDate(str) {
+        const d = parseDate(str);
+        if (!d) return escapeHtml(str);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getMonth() + 1}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function byOrder(a, b) {
+        return (Number(a.display_order) || 0) - (Number(b.display_order) || 0);
+    }
+
+    function setTextIfExists(id, text) {
+        const el = document.getElementById(id);
+        if (el && text !== undefined && text !== null && text !== '') el.textContent = text;
+    }
+
+    // 値があれば表示、空なら要素ごと隠す
+    function setOrHide(id, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const v = (text === undefined || text === null) ? '' : String(text);
+        el.textContent = v;
+        el.classList.toggle('hidden', !v.trim());
+    }
+
+    function safeRun(label, fn) {
+        try { fn(); } catch (e) { console.error(`[${label}] 描画エラー:`, e); }
+    }
+
+    function rulesOf(rules, category) {
+        return rules.filter(r => String(r.category || '').trim() === category).sort(byOrder);
+    }
+
+
+    /* ---------- 0. 期間限定フォーム ---------- */
+    function renderForms(forms) {
+        const section = document.getElementById('forms-section');
+        const container = document.getElementById('forms-container');
+        container.innerHTML = '';
+
+        const now = new Date();
+        const isExpired = f => { const d = parseDate(f.deadline); return !!(d && d < now); };
+
+        // 受付中 かつ 開始日時を過ぎたもの
+        const visible = forms.filter(f => {
+            const status = String(f.status || '').trim();
+            if (status !== '受付中' && status !== '公開中') return false;
+            const start = parseDate(f.start);
+            return !(start && start > now);
+        });
+
+        // group列でまとめる
+        const groups = new Map();
+        const singles = [];
+        visible.forEach(f => {
+            const g = String(f.group || '').trim();
+            if (g) {
+                if (!groups.has(g)) groups.set(g, []);
+                groups.get(g).push(f);
+            } else {
+                singles.push(f);
+            }
+        });
+
+        const cards = [];
+
+        // 申請ボタン（緑はここだけ）／締切済みは灰色
+        const applyBtn = f => isExpired(f)
+            ? `<span class="shrink-0 w-24 text-center text-xs font-bold text-navy-mute bg-frost border border-ice-light rounded-md py-2">${escapeHtml(t('form_closed_label', '終了'))}</span>`
+            : `<a href="${escapeHtml(f.form_url)}" target="_blank" rel="noopener noreferrer"
+                  class="shrink-0 w-24 text-center text-xs font-bold text-act-light bg-act hover:bg-act-hover rounded-md py-2 transition active:scale-95">${escapeHtml(t('form_apply_label', '申請する'))}</a>`;
+
+        const deadlineText = f => isExpired(f)
+            ? escapeHtml(t('form_closed_note', '受付終了'))
+            : (f.deadline
+                ? escapeHtml(t('deadline_label', '締切')) + ' ' + formatDate(f.deadline)
+                : escapeHtml(t('no_deadline_label', '締切なし')));
+
+        // 1行（項目名＋締切／ボタン）
+        const row = (f, showLabel) => `
+            <li class="px-3 py-2.5 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    ${showLabel ? `<p class="font-bold ${isExpired(f) ? 'text-navy-mute' : 'text-navy'}">${escapeHtml(f.label || f.title)}</p>` : ''}
+                    <p class="text-[11px] text-navy-mute">${deadlineText(f)}</p>
+                </div>
+                ${applyBtn(f)}
+            </li>`;
+
+        // カード（他のカードと同じ型：見出し＋区切り線＋説明＋白い中箱）
+        const card = (category, title, desc, innerHtml) => `
+            <div class="bg-ice-pale border border-ice-light rounded-xl p-4">
+                <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light flex-wrap">
+                    <span class="bg-ice-light text-ice-text font-bold text-[11px] px-2 py-0.5 rounded whitespace-nowrap shrink-0">${escapeHtml(category || '申請')}</span>
+                    <h3 class="font-black text-navy text-sm sm:text-base">${escapeHtml(title)}</h3>
+                </div>
+                ${desc ? `<p class="text-xs sm:text-sm text-navy-soft leading-relaxed mb-2.5">${escapeHtml(desc)}</p>` : ''}
+                ${innerHtml}
+            </div>`;
+
+        // 単独フォーム用：白い中箱に1行
+        const rowBox = rowsHtml => `<ul class="bg-white border border-ice-light rounded-lg divide-y divide-ice-light text-xs sm:text-sm">${rowsHtml}</ul>`;
+
+        // グループ用：左から右へ進行が読める横並びタイル（締切済みは灰色）
+        const tile = f => {
+            const done = isExpired(f);
+            return `
+                <div class="${done ? 'bg-frost' : 'bg-white'} border border-ice-light rounded-lg p-2.5 flex flex-col gap-1.5">
+                    <span class="text-sm font-bold ${done ? 'text-navy-mute' : 'text-navy'}">${escapeHtml(f.label || f.title)}</span>
+                    <span class="text-[11px] text-navy-mute">${deadlineText(f)}</span>
+                    ${applyBtn(f).replace('w-24 ', 'w-full ')}
+                </div>`;
+        };
+
+        // グループ（SvSなど複数フォーム）：締切済みの項目は灰色で残す
+        groups.forEach((items, groupName) => {
+            items.sort(byOrder);
+            if (!items.some(f => !isExpired(f))) return; // 全部締切済みなら非表示
+            const desc = (items.find(f => f.desc) || {}).desc || '';
+            cards.push(card(items[0].category, groupName, desc,
+                `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${items.map(tile).join('')}</div>`));
+        });
+
+        // 単独フォーム（霜竜・兵器工場リーグ戦など）
+        singles.filter(f => !isExpired(f)).sort(byOrder).forEach(f => {
+            cards.push(card(f.category, f.title, f.desc, rowBox(row(f, !!f.label))));
+        });
+
+        if (cards.length > 0) {
+            container.innerHTML = cards.join('');
+            section.classList.remove('hidden');
+        } else {
+            section.classList.add('hidden');
+        }
+    }
+
+    /* ---------- 1. サーバーの約束 ---------- */
+    function renderPromise(rules, config) {
+        // 友好協定・サーバーの特徴
+        const sf = document.getElementById('server-features');
+        const features = rulesOf(rules, 'サーバーの特徴');
+        sf.innerHTML = features.length
+            ? features.map(f => `
+                <li class="px-3 py-2.5">
+                    ${f.title ? `<p class="font-bold text-navy">${escapeHtml(f.title)}</p>` : ''}
+                    <p>${escapeHtml(f.content)}</p>
+                </li>`).join('')
+            : '<li class="px-3 py-2.5 text-navy-mute">登録されていません。</li>';
+
+        // 基本ルール（番号付きの行）
+        const rc = document.getElementById('rules-container');
+        const core = rulesOf(rules, '基本ルール');
+        rc.innerHTML = core.length
+            ? core.map((r, i) => `
+                <li class="px-3 py-2.5 flex items-start gap-2.5">
+                    <span class="bg-ice-light text-ice-text font-bold text-[11px] px-1.5 py-0.5 rounded shrink-0 mt-0.5 tabular-nums">${String(i + 1).padStart(2, '0')}</span>
+                    <div>
+                        ${r.title ? `<p class="font-bold text-navy">${escapeHtml(r.title)}</p>` : ''}
+                        <p>${escapeHtml(r.content)}</p>
+                    </div>
+                </li>`).join('')
+            : '<li class="px-3 py-2.5 text-navy-mute">登録されていません。</li>';
+
+        // 違反対応プロトコル
+        const vc = document.getElementById('violations-container');
+        const vio = rulesOf(rules, '違反プロトコル');
+        vc.innerHTML = vio.length
+            ? vio.map((v, i) => `
+                <li class="px-3 py-2.5 flex items-start gap-2.5">
+                    <span class="bg-alert-light text-alert-text font-bold text-[11px] w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">${i + 1}</span>
+                    <div>
+                        ${v.title ? `<p class="font-bold">${escapeHtml(v.title)}</p>` : ''}
+                        <p>${escapeHtml(v.content)}</p>
+                    </div>
+                </li>`).join('')
+            : '<li class="px-3 py-2.5">登録されていません。</li>';
+
+        // バフ使用ガイド
+        setOrHide('config-buff_text', config.buff_text);
+        const crown = '<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>';
+        const notes = Array.isArray(config.buff_notes) ? config.buff_notes : [];
+        const box = document.getElementById('buff-notes');
+        box.classList.toggle('hidden', !notes.length);
+        box.innerHTML = notes.map((n, i) => `
+            <div class="${i ? 'mt-2.5' : ''}">
+                ${n.title ? `<p class="font-bold text-gold-deep flex items-center gap-1.5 mb-0.5">${crown}<span>${escapeHtml(n.title)}</span></p>` : ''}
+                ${n.body ? `<p class="text-navy-soft">${escapeHtml(n.body)}</p>` : ''}
+            </div>`).join('');
+    }
+
+    /* ---------- 2. イベントガイド ---------- */
+    function renderEvents(rules, config) {
+        // SVS体制
+        const svs = document.getElementById('svs-rules');
+        const list = rulesOf(rules, 'SVSルール');
+        svs.innerHTML = list.length
+            ? list.map(s => `
+                <li class="px-3 py-2.5">
+                    ${s.title ? `<p class="font-bold text-navy">${escapeHtml(s.title)}</p>` : ''}
+                    <p>${escapeHtml(s.content)}</p>
+                </li>`).join('')
+            : '<li class="px-3 py-2.5 text-navy-mute">登録されていません。</li>';
+
+        // カード1の説明文（config: svs_desc、任意）
+        setOrHide('config-svs_desc', config.svs_desc);
+
+        // ダブルWIN特典
+        setTextIfExists('config-bonus_title', config.bonus_title);
+        setOrHide('config-bonus_desc', config.bonus_desc);
+        setOrHide('config-bonus_text', config.bonus_text);
+
+        // その他のイベント（rulesシート category=その他イベント。無ければ既定値）
+        const others = rulesOf(rules, 'その他イベント');
+        document.getElementById('other-events').innerHTML = others.length
+            ? others.map(e => `
+                <li class="px-3 py-2.5">
+                    ${e.title ? `<p class="font-bold text-navy">${escapeHtml(e.title)}</p>` : ''}
+                    <p>${escapeHtml(e.content)}</p>
+                </li>`).join('')
+            : '<li class="px-3 py-2.5 text-navy-mute">登録されていません。</li>';
+
+        // 説明文（「時間表」の部分を同盟イベント時間表へのリンクにする）
+        if (config.other_desc_full !== undefined) {
+            const el = document.getElementById('other-desc');
+            const d = String(config.other_desc_full || '');
+            if (!d) { el.classList.add('hidden'); }
+            else {
+                el.classList.remove('hidden');
+                const key = d.includes('同盟イベント時間表') ? '同盟イベント時間表' : (d.includes('時間表') ? '時間表' : '');
+                const link = w => `<a href="#alliance-times" class="text-ice-text font-bold underline underline-offset-2">${escapeHtml(w)}</a>`;
+                el.innerHTML = key ? d.split(key).map(escapeHtml).join(link(key)) : escapeHtml(d);
+            }
+        }
+    }
+
+    /* ---------- 3. 同盟紹介 ---------- */
+    function timeChip(t) {
+        let cls = 'bg-ice-light text-ice-text';
+        if (t.includes('フリー')) cls = 'bg-act-light text-act-text';
+        if (t.includes('おまけ')) cls = 'bg-frost text-navy-mute border border-ice-light';
+        return `<span class="${cls} inline-block font-bold text-[11px] sm:text-xs px-2 py-0.5 rounded whitespace-nowrap">${escapeHtml(t)}</span>`;
+    }
+
+    // Googleドライブの共有リンクを画像として表示できるURLに変換
+    function toImageUrl(url) {
+        const s = String(url || '').trim();
+        if (!s) return '';
+        const m = s.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/);
+        return m ? `https://lh3.googleusercontent.com/d/${m[1]}` : s;
+    }
+
+    // 盟主アイコン（画像が無い・読めない場合は頭文字の丸）
+    function leaderAvatar(a) {
+        const name = String(a.leader_name || '').trim();
+        const initial = escapeHtml((name || String(a.name || '?')).charAt(0));
+        const src = toImageUrl(a.leader_icon);
+        const fallback = `<span class="w-full h-full items-center justify-center bg-navy text-gold font-black text-base" style="display:${src ? 'none' : 'flex'}">${initial}</span>`;
+        if (!src) return fallback;
+        return `<img src="${escapeHtml(src)}" alt="${escapeHtml(name)}" loading="lazy" referrerpolicy="no-referrer"
+                     class="w-full h-full object-cover"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${fallback}`;
+    }
+
+    function renderAlliances(alliances) {
+        const sorted = [...alliances].sort(byOrder);
+
+        // PRカード
+        const grid = document.getElementById('alliance-grid');
+        if (!sorted.length) {
+            grid.innerHTML = '<div class="text-center py-6 text-navy-mute col-span-full text-sm">同盟データが登録されていません。</div>';
+        } else {
+            grid.innerHTML = sorted.map((a, i) => {
+                const full = (i === sorted.length - 1 && sorted.length % 2 !== 0) ? 'md:col-span-2' : '';
+                return `
+                    <div class="bg-white border border-ice-light rounded-xl p-4 ${full}">
+                        <div class="flex items-center gap-2 pb-2 mb-2 border-b border-ice-light">
+                            <span class="w-2 h-2 rounded-full bg-gold"></span>
+                            <span class="font-black text-navy text-base sm:text-lg tracking-wide">${escapeHtml(a.name)}</span>
+                        </div>
+                        ${(a.leader_name || a.leader_icon) ? `
+                        <div class="flex items-center gap-3 mb-2.5">
+                            <div class="w-12 h-12 rounded-full overflow-hidden ring-2 ring-gold shrink-0 bg-ice-light">${leaderAvatar(a)}</div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gold-deep tracking-wider">${escapeHtml(t('leader_label', '盟主'))}</p>
+                                <p class="font-bold text-navy text-sm sm:text-base truncate">${escapeHtml(a.leader_name || '—')}</p>
+                            </div>
+                        </div>` : ''}
+                        ${a.desc ? `<p class="text-xs sm:text-sm text-navy-soft leading-relaxed whitespace-pre-wrap">${escapeHtml(a.desc)}</p>` : ''}
+                    </div>`;
+            }).join('');
+        }
+
+        // イベント時間表（旧times列は熊罠として扱う）
+        document.getElementById('times-head').innerHTML = `
+            <tr>
+                <th class="stick bg-navy text-left font-bold whitespace-nowrap">${escapeHtml(t('col_alliance', '同盟'))}</th>
+                ${TIME_COLUMNS.map(c => `<th class="text-left font-bold whitespace-nowrap">${escapeHtml(t(c.labelKey, c.label))}</th>`).join('')}
+            </tr>`;
+
+        document.getElementById('times-body').innerHTML = sorted.length
+            ? sorted.map(a => `
+                <tr>
+                    <td class="stick bg-white font-black text-navy whitespace-nowrap">${escapeHtml(String(a.name || '').split(/[\s(（]/)[0])}</td>
+                    ${TIME_COLUMNS.map(c => {
+                        const raw = a[c.key];
+                        const ts = toArray(raw);
+                        return `<td>${ts.length ? `<div class="flex flex-wrap gap-1">${ts.map(timeChip).join('')}</div>` : '<span class="text-navy-mute">—</span>'}</td>`;
+                    }).join('')}
+                </tr>`).join('')
+            : `<tr><td colspan="${TIME_COLUMNS.length + 1}" class="text-center text-navy-mute">データがありません。</td></tr>`;
+    }
+
+    /* ---------- フッター（表紙シート「フッター」の行を1行ずつ表示） ---------- */
+    function renderContact(config) {
+        const lines = Array.isArray(config.footer_lines) ? config.footer_lines : [];
+        const el = document.querySelector('[data-t="footer_credit"]');
+        if (!el) return;
+        el.innerHTML = lines.map(escapeHtml).join('<br>');
+        el.classList.toggle('hidden', !lines.length);
+    }
+
+    /* ---------- 新しいシート構成（4シート）→ 描画用の形に変換 ---------- */
+    function adaptData(d) {
+        const cards = sec => (d[sec] && d[sec].cards) || {};
+        const card = (sec, name) => cards(sec)[name] || { title: '', desc: '', items: [] };
+        const cfg = {};
+        const put = (key, val, keepIfEmpty) => { if (val !== undefined && (keepIfEmpty || String(val).trim() !== '')) cfg[key] = val; };
+
+        // 表紙
+        const head = card('cover', 'ヘッダー');
+        put('header_title', head.title); put('header_subtitle', head.desc, true);
+        cfg.footer_lines = card('cover', 'フッター').items.map(i => i.body || i.title).filter(Boolean);
+        if (d.updated) cfg.last_updated = 'Last Updated : ' + d.updated;
+
+        // セクション見出し
+        put('promise_title', d.promise && d.promise.title);
+        put('event_title', d.event && d.event.title);
+        put('alliance_title', d.alliance && d.alliance.title);
+
+        // サーバーの約束
+        const fr = card('promise', '友好協定'), ru = card('promise', '基本ルール'),
+              vi = card('promise', '違反対応'),  bu = card('promise', 'バフ使用ガイド');
+        put('feature_title', fr.title);   put('feature_desc', fr.desc, true);
+        put('rules_title', ru.title);     put('rules_desc', ru.desc, true);
+        put('violation_title', vi.title); put('violation_desc', vi.desc, true);
+        put('buff_title', bu.title);
+        cfg.buff_text = bu.desc;
+        cfg.buff_notes = bu.items;
+
+        // イベントガイド
+        const sv = card('event', '最強王国'), bo = card('event', '特典'), ot = card('event', 'その他イベント');
+        put('svs_title', sv.title); cfg.svs_desc = sv.desc;
+        put('bonus_title', bo.title); cfg.bonus_desc = bo.desc;
+        cfg.bonus_text = bo.items.map(i => [i.title, i.body].filter(Boolean).join(' ')).join('\n');
+        put('other_title', ot.title); cfg.other_desc_full = ot.desc;
+
+        // 同盟紹介
+        const tt = card('alliance', '時間表');
+        put('times_title', tt.title); put('times_desc', tt.desc, true);
+
+        // ルール類（既存の描画処理が使う形）
+        const rules = [];
+        const addRules = (category, c) => c.items.forEach((it, i) =>
+            rules.push({ category, title: it.title, content: it.body, display_order: i + 1 }));
+        addRules('サーバーの特徴', fr);
+        addRules('基本ルール', ru);
+        addRules('違反プロトコル', vi);
+        addRules('SVSルール', sv);
+        addRules('その他イベント', ot);
+
+        // フォーム（表紙シートで「表示」の行だけ届く＝受付中）
+        const forms = card('cover', 'フォーム').items.map((it, i) => ({
+            title: it.title, label: it.title, desc: it.body, form_url: it.url,
+            category: String(it.group || it.title || '').trim().split(/\s+/)[0],   // バッジ：グループ名（無ければタイトル）の最初の語
+            start: it.start, deadline: it.deadline, group: it.group,
+            status: '受付中', display_order: i + 1,
+        }));
+
+        // 同盟と時間表の列
+        const cols = (d.alliance && Array.isArray(d.alliance.timeColumns)) ? d.alliance.timeColumns : [];
+        const alliances = card('alliance', '同盟').items.map((it, i) => {
+            const a = { name: it.title, desc: it.body, leader_name: it.leader, leader_icon: it.icon, display_order: i + 1 };
+            cols.forEach(c => { a[c] = (it.times && it.times[c]) || []; });
+            return a;
+        });
+
+        return { config: cfg, rules, forms, alliances, timeColumns: cols };
+    }
+
+    /* ---------- 全体 ---------- */
+    function renderPage(raw) {
+        const data = adaptData(raw);
+        TIME_COLUMNS = data.timeColumns.map(c => ({ key: c, labelKey: '', label: c }));
+        const config = data.config || {};
+        CFG = config;
+        safeRun('texts', applyTexts);
+        const rules = Array.isArray(data.rules) ? data.rules : [];
+        const forms = Array.isArray(data.forms) ? data.forms : [];
+        const alliances = Array.isArray(data.alliances) ? data.alliances : [];
+
+        document.getElementById('loading-status').classList.add('hidden');
+
+        safeRun('forms',     () => renderForms(forms));
+        safeRun('promise',   () => renderPromise(rules, config));
+        safeRun('events',    () => renderEvents(rules, config));
+        safeRun('alliances', () => renderAlliances(alliances));
+        safeRun('contact',   () => renderContact(config));
+    }
+
+    function showLoadError(message) {
+        const el = document.getElementById('loading-status');
+        el.classList.remove('hidden');
+        el.classList.add('text-alert-text');
+        el.textContent = message;
+    }
+
+    function parseSheetRows(text) {
+        if (!text || !text.includes('google.visualization.Query.setResponse')) return [];
+        const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\)\s*;?\s*$/);
+        if (!match) return [];
+        try {
+            const payload = JSON.parse(match[1]);
+            const rows = Array.isArray(payload && payload.table && payload.table.rows) ? payload.table.rows : [];
+            return rows.map(row => (row && Array.isArray(row.c) ? row.c : []).map(cell => {
+                if (cell && typeof cell === 'object' && Object.prototype.hasOwnProperty.call(cell, 'v')) {
+                    return cell.v;
+                }
+                return cell;
+            })).filter(row => row.some(v => v !== undefined && v !== null && String(v).trim() !== ''));
+        } catch (e) {
+            console.error('Google Sheet 読み込み失敗:', e);
+            return [];
+        }
+    }
+
+    function sheetRowsToCards(rows) {
+        if (!rows.length) return {};
+        const headers = rows[0].map((v, i) => String(v === undefined || v === null ? '' : v).trim() || `col_${i + 1}`);
+        const cards = {};
+
+        rows.slice(1).forEach(row => {
+            if (!row.some(v => v !== undefined && v !== null && String(v).trim() !== '')) return;
+            const record = {};
+            headers.forEach((header, idx) => {
+                record[header] = row[idx] ?? '';
+            });
+
+            const cardKey = String(record['カード'] || record['行の種類'] || record['タイトル'] || '').trim() || 'item';
+            if (!cards[cardKey]) cards[cardKey] = { title: '', desc: '', items: [] };
+
+            const type = String(record['行の種類'] || '').trim();
+            const title = record['タイトル'] ?? '';
+            const body = record['文章'] ?? '';
+
+            if (type === '見出し' || type === 'ヘッダー' || cardKey === 'ヘッダー' || cardKey === '見出し') {
+                cards[cardKey].title = title || body;
+                cards[cardKey].desc = body || title;
+            } else if (title || body || record['URL'] || record['開始'] || record['締切']) {
+                const item = { title: title || '', body: body || '' };
+                if (record['URL']) item.url = String(record['URL']);
+                if (record['開始']) item.start = String(record['開始']);
+                if (record['締切']) item.deadline = String(record['締切']);
+                if (record['グループ']) item.group = String(record['グループ']);
+                cards[cardKey].items.push(item);
+            }
+        });
+
+        return cards;
+    }
+
+    async function loadSpreadsheetData() {
+        const result = {};
+        for (const target of SPREADSHEET_SHEETS) {
+            for (const sheetName of target.names) {
+                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+                try {
+                    const res = await fetch(url, { cache: 'no-store' });
+                    if (!res.ok) continue;
+                    const text = await res.text();
+                    const rows = parseSheetRows(text);
+                    if (!rows.length) continue;
+                    const cards = sheetRowsToCards(rows);
+                    if (Object.keys(cards).length) {
+                        result[target.section] = { cards };
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`Google Sheet ${sheetName} の読み込みに失敗しました:`, e);
+                }
+            }
+        }
+        return Object.keys(result).length ? result : null;
+    }
+
+    /* ---------- 端末への一時保存（2回目以降は開いた瞬間に表示） ---------- */
+    const CACHE_KEY = 'kingdom2863_data_v2';
+
+    function readLocal() {
+        try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+
+    function writeLocal(text) {
+        try { localStorage.setItem(CACHE_KEY, text); } catch (e) { /* 保存できない環境では何もしない */ }
+    }
+
+    function isValidData(d) {
+        return !!(d && !d.error && (d.cover || d.promise || d.event || d.alliance));
+    }
+
+    async function loadData() {
+        const cached = readLocal();
+        const hasCache = isValidData(cached);
+        if (hasCache) safeRun('cached-render', () => renderPage(cached));
+
+        let data = null;
+        const legacyUrlConfigured = !!(SCRIPT_URL && !SCRIPT_URL.includes('ここにGASのウェブアプリURL'));
+
+        if (legacyUrlConfigured) {
+            try {
+                const res = await fetch(SCRIPT_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('GAS 読み込み失敗:', e);
+            }
+        }
+
+        if (!isValidData(data)) {
+            data = await loadSpreadsheetData();
+        }
+
+        if (!isValidData(data)) {
+            if (!hasCache) showLoadError('Google Sheet または GAS からデータを読み込めませんでした。');
+            return;
+        }
+
+        if (!hasCache || JSON.stringify(cached) !== JSON.stringify(data)) {
+            renderPage(data);
+        }
+        writeLocal(JSON.stringify(data));
+    }
+
+    // ページの読み込み完了を待たず、すぐに取得を開始する
+    loadData();
+</script>
+
+</body>
+</html>
