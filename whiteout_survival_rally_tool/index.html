@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f17">
+<title>ホワサバ集結支援ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f17; --panel: #111722; --panel2: #0f141d; --line: #1f2937; --line2: #334155;
+    --text: #e5e7eb; --strong: #f8fafc; --muted: #94a3b8;
+    --green: #34d399; --amber: #fbbf24; --red: #f87171; --purple: #7c3aed;
+    --accent: var(--green); --accent-tint: rgba(52,211,153,0.08); --accent-border: rgba(52,211,153,0.55);
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --sans: Inter, 'Noto Sans JP', system-ui, sans-serif;
+  }
+  body[data-mode="locked"] { --accent: var(--amber); --accent-tint: rgba(251,191,36,0.08); --accent-border: rgba(251,191,36,0.65); }
+  body[data-mode="over"]   { --accent: var(--red);   --accent-tint: rgba(248,113,113,0.08); --accent-border: #f87171; }
+
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body { margin: 0; background: #05070b; }
+  body { color: var(--text); font-family: var(--sans); -webkit-tap-highlight-color: transparent; }
+  button { font-family: var(--sans); cursor: pointer; touch-action: manipulation; }
+  button:active { transform: scale(0.97); }
+  input { font-family: var(--sans); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
+
+  /* ヘッダー */
+  header { position: sticky; top: 0; z-index: 10; padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top)); background: #111722; border-bottom: 1px solid var(--line); }
+  .clockbtn { width: 100%; border: none; background: transparent; color: var(--strong); padding: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .clockbtn:active { transform: none; }
+  .clockbtn .chev { color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+  .clockbtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .offrow { display: none; align-items: center; justify-content: center; padding: 8px 0 2px; }
+  .offrow.open { display: flex; }
+  .offset { display: flex; align-items: center; gap: 6px; }
+  .offset .lbl { font-size: 12px; color: var(--muted); }
+  .offset button { width: 48px; height: 40px; border-radius: 8px; border: 1px solid var(--line2); background: #1e293b; color: var(--text); font: 700 13px var(--mono); }
+  .offset button.val { width: 60px; height: 40px; border: 1px dashed var(--line2); background: transparent; color: var(--text); font: 700 14px var(--mono); text-align: center; padding: 0; }
+  .clock { text-align: center; font: 800 34px var(--mono); letter-spacing: .04em; color: var(--strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
+
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+  .card { background: var(--accent-tint); border: 2px solid var(--accent-border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color .2s, background .2s; }
+  .card.chat { background: var(--panel); }
+  .chead { display: flex; align-items: center; justify-content: space-between; }
+  .ctitle { font-size: 14px; font-weight: 700; }
+  .badge { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; color: var(--accent); border: 1px solid var(--accent-border); background: var(--bg); }
+
+  .target { text-align: center; font: 800 52px var(--mono); line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .calcnote { font-size: 12px; color: var(--muted); line-height: 1.7; padding-top: 10px; border-top: 1px solid var(--line); }
+  .calcnote b { color: var(--text); font-weight: 700; }
+  .calcnote .num { color: var(--text); }
+
+  .playtext { display: none; font-size: 17px; font-weight: 800; }
+  body[data-mode="over"] .playtext { display: inline; }
+
+  .bigbtn { height: 56px; border-radius: 12px; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+  .playbtn { background: var(--accent); color: var(--bg); }
+  .copybtn { background: var(--purple); color: #fff; font-weight: 800; font-size: 17px; }
+
+  .limit { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); }
+  .limit .l { font-size: 12px; color: var(--muted); }
+  .limit .l b { font: 700 13px var(--mono); color: var(--text); margin-left: 4px; }
+  .limit .r { font: 700 15px var(--mono); color: var(--muted); }
+  body[data-mode="locked"] .limit .r { color: var(--amber); }
+  body[data-mode="over"] .limit .r { color: var(--red); }
+
+  label.f { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+  .txt { height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line2); background: var(--bg); color: var(--text); font-size: 16px; }
+  .txt:focus, .numin:focus { outline: none; border-color: #64748b; }
+
+  .seg { display: grid; gap: 6px; }
+  .seg button { height: 44px; border-radius: 10px; border: 1px solid var(--line2); background: #1e293b; color: #cbd5e1; font-weight: 700; font-size: 14px; }
+  .seg button.on { border: 2px solid var(--text); background: var(--text); color: var(--bg); font-weight: 800; }
+
+  .posrow { display: flex; gap: 8px; align-items: center; }
+  .posrow > span { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .posrow .seg { grid-template-columns: repeat(2, minmax(0,1fr)); flex: 1; }
+
+  .out { min-height: 64px; padding: 10px 14px; border-radius: 10px; border: 1px dashed var(--line2); background: var(--bg); color: var(--muted); font-size: 14px; display: flex; align-items: center; white-space: pre-line; line-height: 1.3; word-break: break-all; }
+  body[data-mode="locked"] .out { border: 2px solid var(--amber); color: #fde68a; font: 800 22px var(--mono); }
+  body[data-mode="over"] .out { border: 2px solid var(--red); color: #fca5a5; font: 800 22px var(--mono); text-decoration: line-through; }
+
+  .settings { background: var(--panel2); border: 1px dashed #2b3647; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+  .stitle { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .06em; }
+  .sgroup { display: flex; flex-direction: column; gap: 8px; }
+  .sgroup > .h { font-size: 13px; font-weight: 700; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+  .row .d { display: flex; flex-direction: column; gap: 2px; }
+  .row .d b { font-size: 13px; }
+  .row .d small { font-size: 11px; color: var(--muted); }
+  .numin { width: 84px; height: 44px; text-align: center; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel); color: var(--strong); font: 800 17px var(--mono); }
+
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #fff; background: var(--purple); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; white-space: nowrap; }
+  .toast.warn { background: #b91c1c; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body data-mode="running">
+<div class="app">
+
+  <header>
+    <button type="button" class="clockbtn" id="clockBtn" aria-expanded="false" aria-controls="offRow" aria-label="現在のUTC時刻（タップで補正を開く）">
+      <span class="clock" id="clock">00:00:00.00</span>
+      <svg class="chev" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="offrow" id="offRow">
+      <div class="offset">
+        <span class="lbl">UTC補正</span>
+        <button type="button" id="offMinus" aria-label="0.1秒戻す">−0.1</button>
+        <button type="button" class="val" id="offVal" aria-label="補正を0に戻す" title="タップで0に戻す">+0.0s</button>
+        <button type="button" id="offPlus" aria-label="0.1秒進める">+0.1</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 着弾時刻 -->
+    <section class="card">
+      <div class="chead">
+        <span class="ctitle">着弾時刻</span>
+        <span class="badge" id="badge">追従中</span>
+      </div>
+      <div class="target" id="target">--:--:--</div>
+      <button type="button" class="bigbtn playbtn" id="playBtn" aria-label="一時停止して確定">
+        <svg id="icoPause" aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        <svg id="icoPlay" aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+        <span class="playtext" role="alert">リミットを過ぎています</span>
+      </button>
+      <div class="limit">
+        <span class="l">最終ライン<b id="limit">--:--:--</b></span>
+        <span class="r" id="remain">確定後に表示</span>
+      </div>
+    </section>
+
+    <!-- チャット出力 -->
+    <section class="card chat">
+      <span class="ctitle">チャット出力</span>
+      <label class="f">コメント（任意）
+        <input type="text" class="txt" id="comment" autocomplete="off">
+      </label>
+      <div class="posrow">
+        <span>コメント位置</span>
+        <div class="seg" id="posSeg">
+          <button type="button" data-v="front">前（改行）</button>
+          <button type="button" data-v="back">後ろ</button>
+        </div>
+      </div>
+      <div class="out" id="out">一時停止で確定します</div>
+      <button type="button" class="bigbtn copybtn" id="copyBtn">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+        <span>コピー</span>
+      </button>
+    </section>
+
+    <!-- 設定 -->
+    <section class="settings">
+      <span class="stitle">設定</span>
+      <div class="sgroup">
+        <span class="h">集結時間</span>
+        <div class="seg" id="rallySeg" style="grid-template-columns: repeat(4, minmax(0,1fr))">
+          <button type="button" data-v="60">1分</button>
+          <button type="button" data-v="180">3分</button>
+          <button type="button" data-v="300">5分</button>
+          <button type="button" data-v="600">10分</button>
+        </div>
+      </div>
+      <div class="sgroup">
+        <span class="h">パラメータ</span>
+        <label class="row">
+          <span class="d"><b>行軍時間（秒）</b><small>最終ラインからの秒数</small></span>
+          <input type="text" inputmode="numeric" class="numin" id="march" autocomplete="off">
+        </label>
+        <label class="row">
+          <span class="d"><b>指示バッファ（秒）</b><small>指示が届くまでの余裕 / 10〜300</small></span>
+          <input type="text" inputmode="numeric" class="numin" id="buffer" autocomplete="off">
+        </label>
+        <div class="row">
+          <span class="d"><b>確定時の丸め</b><small>止めた時刻を切り上げる単位</small></span>
+          <div class="seg" id="roundSeg" style="grid-template-columns: repeat(2, minmax(0,1fr)); width: 132px">
+            <button type="button" data-v="5">5秒</button>
+            <button type="button" data-v="10">10秒</button>
+          </div>
+        </div>
+      </div>
+      <div class="calcnote" id="calcnote"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ---------- 設定（端末に保存） ----------
+  const DEFAULTS = { offsetTenths: 0, rally: 300, march: 70, buffer: 45, round: 10, pos: 'back', comment: '' };
+  let S = { ...DEFAULTS };
+  try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('wosRallyTool') || '{}') }; } catch (e) {}
+  const save = () => { try { localStorage.setItem('wosRallyTool', JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- 状態 ----------
+  let mode = 'running';     // running | locked | over
+  let lockedTarget = null;  // 確定した着弾時刻（UTC ms）
+  let rawAtLock = null;     // 丸め前の最速着弾（UTC ms）
+
+  // ---------- 時刻ユーティリティ ----------
+  const now = () => Date.now() + S.offsetTenths * 100;
+  const pad = n => String(n).padStart(2, '0');
+  function hms(ms) { const d = new Date(ms); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; }
+  function hmsc(ms) { const d = new Date(ms); return `${hms(ms)}.${pad(Math.floor(d.getUTCMilliseconds() / 10))}`; }
+  function mss(ms) { const s = Math.floor(Math.abs(ms) / 1000); return `${Math.floor(s / 60)}:${pad(s % 60)}`; }
+  const toHalf = s => s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
+  const totalMs = () => (S.rally + S.march + S.buffer) * 1000;
+  const earliest = t => t + totalMs();                       // 今立てた場合の最速着弾（バッファ込み）
+  const limitOf = target => target - (S.rally + S.march) * 1000; // 最終ラインが集結を立てる最終時刻
+
+  function chatText() {
+    if (lockedTarget === null) return '';
+    const d = new Date(lockedTarget);
+    const time = `U${pad(d.getUTCMinutes())}.${pad(d.getUTCSeconds())}`;
+    const c = S.comment.trim();
+    if (!c) return time;
+    return S.pos === 'front' ? `${c}\n${time}` : `${time} ${c}`;
+  }
+
+  // ---------- 操作 ----------
+  function setMode(m) {
+    mode = m;
+    document.body.dataset.mode = m;
+    const running = m === 'running';
+    $('icoPause').style.display = running ? '' : 'none';
+    $('icoPlay').style.display = m === 'locked' ? '' : 'none';
+    $('playBtn').setAttribute('aria-label', running ? '一時停止して確定' : m === 'over' ? 'リミットを過ぎています（再生に戻す）' : '再生に戻す');
+    $('badge').textContent = { running: '追従中', locked: '確定', over: 'タイムオーバー' }[m];
+    if (m === 'over' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    renderStatic();
+  }
+
+  $('playBtn').addEventListener('click', () => {
+    if (mode === 'running') {
+      const unit = S.round * 1000;
+      const e = earliest(now());
+      rawAtLock = Math.ceil(e / 1000) * 1000;
+      lockedTarget = Math.ceil(e / unit) * unit;   // 切り上げ（切り捨てると間に合わない）
+      setMode('locked');
+    } else {
+      lockedTarget = null; rawAtLock = null;
+      setMode('running');
+    }
+  });
+
+  $('offMinus').addEventListener('click', () => { S.offsetTenths = Math.max(-600, S.offsetTenths - 1); save(); renderStatic(); });
+  $('clockBtn').addEventListener('click', () => {
+    const open = $('offRow').classList.toggle('open');
+    $('clockBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('offVal').addEventListener('click', () => { if (S.offsetTenths === 0) return; S.offsetTenths = 0; save(); renderStatic(); toast('補正を0に戻しました'); });
+  $('offPlus').addEventListener('click',  () => { S.offsetTenths = Math.min(600,  S.offsetTenths + 1); save(); renderStatic(); });
+
+  function bindSeg(id, key, parse) {
+    $(id).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      S[key] = parse(b.dataset.v); save(); renderStatic();
+    });
+  }
+  bindSeg('rallySeg', 'rally', v => parseInt(v, 10));
+  bindSeg('roundSeg', 'round', v => parseInt(v, 10));
+  bindSeg('posSeg', 'pos', v => v);
+
+  function bindNum(id, key, min, max) {
+    const el = $(id);
+    el.addEventListener('input', () => {
+      const n = parseInt(toHalf(el.value), 10);
+      if (!isNaN(n)) { S[key] = Math.max(min, Math.min(max, n)); save(); renderStatic(); }
+    });
+    el.addEventListener('blur', () => { el.value = S[key]; });
+  }
+  bindNum('march', 'march', 0, 3600);
+  bindNum('buffer', 'buffer', 10, 300);
+
+  $('comment').addEventListener('input', e => { S.comment = e.target.value; save(); renderStatic(); });
+
+  $('copyBtn').addEventListener('click', () => {
+    if (mode === 'running') return toast('先に一時停止で確定してください', true);
+    if (mode === 'over')    return toast('タイムオーバー：再生に戻してください', true);
+    copy(chatText());
+  });
+
+  function copy(text) {
+    const ok = () => toast('コピーしました');
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 99999);
+      let done = false; try { done = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      done ? ok() : toast('コピーできませんでした', true);
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok, fallback);
+    else fallback();
+  }
+
+  let toastTimer;
+  function toast(msg, warn) {
+    const t = $('toast');
+    t.textContent = msg; t.classList.toggle('warn', !!warn); t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }
+
+  // ---------- 描画 ----------
+  function renderStatic() {
+    const o = S.offsetTenths / 10;
+    $('offVal').textContent = `${o > 0 ? '+' : o < 0 ? '−' : '+'}${Math.abs(o).toFixed(1)}s`;
+    [['rallySeg', S.rally], ['roundSeg', S.round], ['posSeg', S.pos]].forEach(([id, v]) => {
+      $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === String(v)));
+    });
+    if (document.activeElement !== $('march'))  $('march').value = S.march;
+    if (document.activeElement !== $('buffer')) $('buffer').value = S.buffer;
+    if (document.activeElement !== $('comment')) $('comment').value = S.comment;
+    $('out').textContent = mode === 'running' ? '一時停止で確定します' : chatText();
+    const f = x => `<span class="num">${mss(x * 1000)}</span>`;
+    $('calcnote').innerHTML =
+      `<b>補足：計算の内訳</b><br>` +
+      `着弾時刻 ＝ 現在UTC（補正込み）＋ 集結 ${f(S.rally)} ＋ 行軍 ${f(S.march)} ＋ バッファ ${f(S.buffer)}<br>` +
+      `一時停止で確定するとき、${S.round}秒単位で切り上げ` +
+      (mode !== 'running' && rawAtLock !== null && rawAtLock !== lockedTarget ? `（<span class="num">${hms(rawAtLock)}</span> → <span class="num">${hms(lockedTarget)}</span>）` : '') + `<br>` +
+      `最終ライン ＝ 着弾時刻 − 集結 − 行軍（これを過ぎるとタイムオーバー）`;
+    tick();
+  }
+
+  function tick() {
+    const t = now();
+    $('clock').textContent = hmsc(t);
+
+    if (mode === 'running') {
+      const e = Math.ceil(earliest(t) / 1000) * 1000;
+      $('target').textContent = hms(e);
+      $('limit').textContent = '--:--:--';
+      $('remain').textContent = '確定後に表示';
+      return;
+    }
+
+    const lim = limitOf(lockedTarget);
+    const rem = lim - t;
+    $('target').textContent = hms(lockedTarget);
+    $('limit').textContent = hms(lim);
+    if (rem >= 0) {
+      $('remain').textContent = `残り ${mss(rem + 999)}`;
+      if (mode === 'over') setMode('locked');   // 設定変更で間に合うようになった場合
+    } else {
+      $('remain').textContent = `超過 ${mss(-rem)}`;
+      if (mode !== 'over') setMode('over');
+    }
+  }
+
+  // ピンチでの拡大を防ぐ（iOS Safari向け）。ダブルタップ拡大は CSS の touch-action: manipulation で抑止
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
+
+  renderStatic();
+  setInterval(tick, 50);
+})();
+</script>
+</body>
+</html>
